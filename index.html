@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>APEX Data Insight · 你真的了解用户吗？</title>
+<style>
+html:root[data-theme="dark"]{--bg:#07080C;--bg2:#10121A;--card:rgba(255,255,255,.04);--card2:rgba(255,255,255,.07);--line:rgba(255,255,255,.1);--line2:rgba(255,255,255,.05);--ink:#F5F6FA;--ink2:#AEB3C2;--ink3:#6E7384;--a1:#9A8CFF;--a2:#45D8F7;--a3:#FF7D5E;--good:#46E0A8;--warn:#FFB547;--a1r:154,140,255;--a2r:69,216,247;--a3r:255,125,94;--goodr:70,224,168;--grad:linear-gradient(100deg,#B3A6FF 0%,#7EA8FF 48%,#45D8F7 100%);--ember:linear-gradient(100deg,#FFA27A,#FF6E7F);--on:#0B0C12;--shadow:0 30px 80px rgba(0,0,0,.45);--aur:.5;color-scheme:dark}
+html:root[data-theme="light"]{--bg:#F5F5F8;--bg2:#FFFFFF;--card:rgba(255,255,255,.7);--card2:rgba(255,255,255,.92);--line:rgba(14,16,26,.1);--line2:rgba(14,16,26,.05);--ink:#0B0C12;--ink2:#4A4F5E;--ink3:#8B90A0;--a1:#5B45F0;--a2:#0A8FB5;--a3:#E0512F;--good:#0B9A68;--warn:#B47708;--a1r:91,69,240;--a2r:10,143,181;--a3r:224,81,47;--goodr:11,154,104;--grad:linear-gradient(100deg,#5B45F0 0%,#3366FF 50%,#0A8FB5 100%);--ember:linear-gradient(100deg,#E0512F,#D6336C);--on:#FFFFFF;--shadow:0 24px 60px rgba(20,24,40,.12);--aur:.35;color-scheme:light}
+:root{--sans:"SF Pro Display",-apple-system,BlinkMacSystemFont,"Inter","Segoe UI Variable Display","Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;--text:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;--mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;--ease:cubic-bezier(.16,1,.3,1);--spring:cubic-bezier(.34,1.56,.64,1)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--text);-webkit-font-smoothing:antialiased}
+body{overflow-x:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--a1);outline-offset:3px}
+.aura{position:fixed;inset:-10%;z-index:0;pointer-events:none;filter:blur(90px) saturate(1.2);opacity:var(--aur)}
+.aura i{position:absolute;border-radius:50%;transition:background 1.2s var(--ease)}
+.aura i:nth-child(1){width:46vw;height:46vw;left:52%;top:-6%;background:rgba(var(--a1r),.6);animation:d1 26s ease-in-out infinite alternate}
+.aura i:nth-child(2){width:38vw;height:38vw;left:2%;top:50%;background:rgba(var(--a2r),.4);animation:d2 32s ease-in-out infinite alternate}
+.aura i:nth-child(3){width:30vw;height:30vw;left:34%;top:30%;background:rgba(80,110,255,.3);animation:d3 22s ease-in-out infinite alternate}
+body[data-mood="gut"] .aura i:nth-child(1){background:rgba(var(--a3r),.5)}body[data-mood="gut"] .aura i:nth-child(2){background:rgba(255,170,90,.35)}
+body[data-mood="win"] .aura i:nth-child(2){background:rgba(var(--goodr),.45)}
+@keyframes d1{to{transform:translate(-14vw,10vh) scale(1.15)}}@keyframes d2{to{transform:translate(16vw,-12vh) scale(.9)}}@keyframes d3{to{transform:translate(10vw,14vh) scale(1.25)}}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:50}
+/* HUD */
+.hud{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:12px max(16px,env(safe-area-inset-left,0px));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:color-mix(in srgb,var(--bg) 70%,transparent);border-bottom:1px solid var(--line2)}
+.brand{display:flex;align-items:center;gap:10px;font:700 15px var(--sans);letter-spacing:-.01em;white-space:nowrap}
+.brand i{width:22px;height:22px;border-radius:7px;background:var(--grad);display:grid;place-items:center}
+.brand i:after{content:"";width:8px;height:8px;border-radius:50%;background:var(--bg);box-shadow:0 0 0 2px rgba(255,255,255,.0)}
+.map{flex:1;display:flex;justify-content:center;gap:6px}
+.map span{width:34px;height:6px;border-radius:6px;background:var(--line);position:relative;overflow:hidden}
+.map span.done{background:var(--grad)}
+.map span.cur:after{content:"";position:absolute;inset:0;background:var(--grad);animation:load 1.6s ease-in-out infinite}
+@keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.score{font:700 14px var(--mono);padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);min-width:84px;text-align:center}
+.score b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.score.bump{animation:bump .6s var(--spring)}
+@keyframes bump{40%{transform:scale(1.25)}}
+.tbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;color:var(--ink2)}
+.tbtn:hover{border-color:rgba(var(--a1r),.5)}
+/* layout */
+main{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:32px 20px 60px;min-height:calc(100vh - 60px);display:flex;flex-direction:column;justify-content:center}
+.scr{animation:in .7s var(--ease) both}
+@keyframes in{from{opacity:0;transform:translateY(18px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+.st>*{animation:in .8s var(--ease) both}
+.st>*:nth-child(2){animation-delay:.08s}.st>*:nth-child(3){animation-delay:.16s}.st>*:nth-child(4){animation-delay:.24s}.st>*:nth-child(5){animation-delay:.32s}.st>*:nth-child(6){animation-delay:.4s}
+.kick{display:inline-flex;align-self:flex-start;align-items:center;gap:10px;font:600 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);padding:6px 12px 6px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card);margin-bottom:18px}
+.kick:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grad);animation:pulse 2.2s infinite}
+@keyframes pulse{50%{transform:scale(1.6);opacity:.5}}
+h1,h2,h3{font-family:var(--sans);margin:0;text-wrap:balance}
+h1{font-size:clamp(40px,7vw,80px);line-height:1.02;font-weight:750;letter-spacing:-.045em}
+h2{font-size:clamp(26px,4vw,40px);line-height:1.12;font-weight:700;letter-spacing:-.03em}
+h3{font-size:20px;font-weight:700;letter-spacing:-.02em}
+:lang(zh-CN) h1,:lang(zh-CN) h2{letter-spacing:-.01em}
+em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+em.w{background:var(--ember);-webkit-background-clip:text;background-clip:text}
+.lead{font-size:clamp(16px,2vw,19px);line-height:1.6;color:var(--ink2);max-width:680px;margin:18px 0 0}
+.sub{color:var(--ink2);font-size:15px;line-height:1.55;margin:10px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3)}
+.btn{display:inline-flex;align-items:center;gap:10px;border:0;border-radius:999px;padding:14px 26px;font:700 16px var(--text);background:var(--grad);color:var(--on);box-shadow:0 10px 30px rgba(var(--a1r),.35);transition:transform .35s var(--spring),box-shadow .3s}
+.btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 16px 40px rgba(var(--a1r),.45)}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.35;pointer-events:none}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.btn .ar{transition:transform .3s var(--spring)}.btn:hover .ar{transform:translateX(4px)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.note{font:500 11.5px var(--mono);color:var(--ink3);margin-top:14px;display:flex;gap:8px;align-items:flex-start}
+.note:before{content:"";flex:none;width:14px;height:1px;background:var(--ink3);margin-top:8px}
+.shake{animation:shake .5s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+/* intro */
+.levels{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:38px 0 30px}
+.lv{padding:18px;display:grid;gap:8px;transition:transform .4s var(--spring),border-color .3s}
+.lv:hover{transform:translateY(-4px) rotate(-.6deg);border-color:rgba(var(--a1r),.45)}
+.lv b{font:700 11px var(--mono);color:var(--a1)}
+.lv h3{font-size:17px}
+.lv p{margin:0;font-size:13px;color:var(--ink2);line-height:1.45}
+.lv .ic{width:40px;height:40px;border-radius:12px;background:rgba(var(--a1r),.12);display:grid;place-items:center;margin-bottom:6px}
+.lv svg{width:22px;height:22px;stroke:var(--a1);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.roles{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.role{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 16px;font-size:14px;font-weight:600;color:var(--ink2);transition:all .3s var(--spring)}
+.role[aria-pressed="true"]{background:var(--grad);color:var(--on);border-color:transparent;transform:scale(1.04)}
+/* level 1 */
+.q{padding:30px}
+.guess{margin-top:28px}
+.gval{font:800 clamp(52px,9vw,88px)/1 var(--sans);letter-spacing:-.05em;font-variant-numeric:tabular-nums;background:var(--ember);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gval small{font-size:.4em;font-weight:600;color:var(--ink3);-webkit-text-fill-color:var(--ink3);margin-left:8px;letter-spacing:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:10px;border-radius:10px;background:linear-gradient(90deg,rgba(var(--a3r),.7) var(--p,50%),var(--line) var(--p,50%));margin:22px 0 10px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:var(--bg2);border:3px solid var(--a3);box-shadow:0 6px 18px rgba(var(--a3r),.45);cursor:grab;transition:transform .2s}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.2);cursor:grabbing}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--bg2);border:3px solid var(--a3)}
+.scale{display:flex;justify-content:space-between;font:500 11px var(--mono);color:var(--ink3)}
+.rev{margin-top:26px;display:grid;gap:14px}
+.bar{display:grid;grid-template-columns:110px 1fr 90px;gap:14px;align-items:center}
+.bar span{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.bar .tr{height:16px;border-radius:10px;background:var(--line2);overflow:hidden}
+.bar .tr i{display:block;height:100%;width:0;border-radius:10px;transition:width 1.2s var(--ease)}
+.bar.you .tr i{background:var(--ember)}.bar.real .tr i{background:var(--grad);transition-delay:.35s}
+.bar b{font:800 26px var(--sans);letter-spacing:-.04em;text-align:right;font-variant-numeric:tabular-nums}
+.bar.real b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pts{display:inline-flex;align-items:center;gap:8px;font:800 20px var(--sans);padding:6px 14px;border-radius:999px;background:rgba(var(--goodr),.12);color:var(--good);animation:pop .7s var(--spring) both .9s}
+.pts.lo{background:rgba(var(--a3r),.12);color:var(--a3)}
+@keyframes pop{from{opacity:0;transform:scale(.5)}}
+.ins{padding:18px 20px;border-radius:16px;background:rgba(var(--a1r),.08);border:1px solid rgba(var(--a1r),.25);display:grid;gap:6px;animation:in .8s var(--ease) both 1.1s}
+.ins b{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--a1)}
+.ins p{margin:0;font-size:15.5px;line-height:1.55}
+.ins p.did{color:var(--ink2);font-size:14px}
+/* level 2 */
+.l2{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;margin-top:22px;align-items:start}
+.wf{position:relative;padding:0;overflow:hidden;min-height:380px;user-select:none}
+.wf-top{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line2);font:700 14px var(--sans)}
+.wf-top .dots{display:flex;gap:5px}.wf-top .dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.wf-top .home{margin-left:auto;font:600 12px var(--text);color:var(--ink3);border:1px solid var(--line);padding:4px 10px;border-radius:8px;background:none}
+.wf-body{padding:18px}
+.wfs-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.wfs{border:1px solid var(--line);background:var(--card2);border-radius:12px;padding:12px 10px;text-align:left;display:grid;gap:4px;transition:transform .3s var(--spring),border-color .3s,background .3s}
+.wfs b{font:700 11px var(--mono);color:var(--ink3)}
+.wfs span{font-size:13px;font-weight:600;line-height:1.3}
+.wfs.ok{border-color:rgba(var(--goodr),.5)}
+.wfs.err{border-color:rgba(var(--a3r),.7);background:rgba(var(--a3r),.1)}
+.wfs.press{transform:scale(.94)}
+.asking .wfs{cursor:pointer;animation:wig 2.4s ease-in-out infinite}
+.asking .wfs:hover{border-color:var(--a1);transform:translateY(-3px)}
+.asking .wfs:nth-child(2){animation-delay:.2s}.asking .wfs:nth-child(3){animation-delay:.4s}.asking .wfs:nth-child(4){animation-delay:.6s}
+@keyframes wig{0%,90%,100%{rotate:0deg}93%{rotate:-2deg}96%{rotate:2deg}}
+.wf-chart{margin-top:16px;height:150px;border-radius:12px;background:var(--line2);display:flex;align-items:flex-end;gap:10px;padding:16px}
+.wf-chart i{flex:1;border-radius:6px 6px 2px 2px;background:rgba(var(--a1r),.35);height:var(--h);transition:height .6s var(--ease),opacity .4s}
+.wf-chart.broken i{opacity:.25;height:12%!important}
+.toast{position:absolute;right:16px;top:58px;padding:10px 14px;border-radius:12px;background:var(--a3);color:#fff;font-size:13px;font-weight:600;box-shadow:0 10px 30px rgba(var(--a3r),.4);opacity:0;transform:translateY(-10px) scale(.95);transition:all .35s var(--spring);pointer-events:none}
+.toast.on{opacity:1;transform:none}
+.cursor{position:absolute;left:50%;top:70%;width:22px;height:22px;pointer-events:none;transition:left .7s var(--ease),top .7s var(--ease);z-index:3;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4))}
+.cursor svg{width:22px;height:22px}
+.cursor .rip{position:absolute;left:-12px;top:-12px;width:30px;height:30px;border-radius:50%;border:2px solid var(--a2);opacity:0}
+.cursor.click .rip{animation:rip .5s ease-out}
+@keyframes rip{from{opacity:1;transform:scale(.3)}to{opacity:0;transform:scale(1.6)}}
+.gone{position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 70%,transparent);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .5s;text-align:center;padding:30px;z-index:4}
+.gone.on{opacity:1}
+.gone div{display:grid;gap:8px;justify-items:center}
+.gone b{font:800 26px var(--sans);letter-spacing:-.03em}
+.gone span{color:var(--ink2);font-size:14px}
+.side{padding:22px;display:grid;gap:14px}
+.log{list-style:none;margin:0;padding:0;display:grid;gap:6px;font:500 12.5px var(--mono);color:var(--ink2);min-height:150px}
+.log li{animation:in .4s var(--ease) both;display:flex;gap:8px}
+.log li i{font-style:normal;color:var(--ink3)}
+.log li.e{color:var(--a3)}.log li.x{color:var(--warn)}
+.funnel{display:grid;gap:8px}
+.fr{display:grid;grid-template-columns:96px 1fr 44px;gap:10px;align-items:center;font-size:13px}
+.fr .tr{height:12px;border-radius:8px;background:var(--line2);overflow:hidden}
+.fr .tr i{display:block;height:100%;width:0;border-radius:8px;background:var(--ink3);transition:width 1s var(--ease)}
+.fr.hot .tr i{background:var(--ember)}
+.fr b{font:700 13px var(--mono);text-align:right}.fr.hot b{color:var(--a3)}
+/* level 3 */
+.case{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px}
+.brief{padding:24px;display:grid;gap:12px;align-content:start}
+.pot{display:flex;align-items:center;gap:12px}
+.pot b{font:800 34px var(--sans);letter-spacing:-.04em;font-variant-numeric:tabular-nums;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pot span{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink3)}
+.clues{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.clue{perspective:900px;height:132px;border:0;background:none;padding:0;text-align:left}
+.clue .in{position:relative;width:100%;height:100%;transition:transform .8s var(--spring);transform-style:preserve-3d}
+.clue.open .in{transform:rotateY(180deg)}
+.clue .f,.clue .b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:16px;padding:14px;display:grid;align-content:space-between;border:1px solid var(--line)}
+.clue .f{background:linear-gradient(135deg,rgba(var(--a1r),.16),rgba(var(--a2r),.08));transition:transform .3s var(--spring)}
+.clue:not(.open):hover .f{transform:translateY(-3px);border-color:rgba(var(--a1r),.5)}
+.clue .f b{font:700 16px var(--sans)}
+.clue .f span{font:600 11px var(--mono);color:var(--ink3)}
+.clue .f .cost{color:var(--a3)}
+.clue .b{transform:rotateY(180deg);background:var(--bg2);align-content:start;gap:6px}
+.clue .b b{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--a1)}
+.clue .b p{margin:0;font-size:13.5px;line-height:1.45}
+.clue .b .tg{font:600 10px var(--mono);color:var(--ink3);margin-top:auto}
+.clue .b .tg.real{color:var(--good)}
+.opts{display:grid;gap:10px}
+.opt{border:1px solid var(--line);background:var(--card2);border-radius:14px;padding:14px 16px;text-align:left;display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;font-size:14.5px;line-height:1.45;font-weight:500;transition:transform .3s var(--spring),border-color .3s,background .3s}
+.opt:hover{transform:translateX(4px);border-color:rgba(var(--a1r),.5)}
+.opt i{font:700 12px var(--mono);font-style:normal;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--line2);color:var(--ink2)}
+.opt.right{border-color:var(--good);background:rgba(var(--goodr),.1)}.opt.right i{background:var(--good);color:var(--on)}
+.opt.wrong{border-color:var(--a3);background:rgba(var(--a3r),.08);opacity:.8}
+.opts.done .opt{pointer-events:none}
+.verdict{padding:18px 20px;border-radius:16px;display:grid;gap:8px;animation:in .7s var(--ease) both}
+.verdict.g{background:rgba(var(--goodr),.1);border:1px solid rgba(var(--goodr),.35)}
+.verdict.b{background:rgba(var(--a3r),.08);border:1px solid rgba(var(--a3r),.3)}
+.verdict h3{font-size:18px}
+.verdict p{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink2)}
+.verdict .did{color:var(--ink);font-weight:600}
+.verdict .did:before{content:"→ ";color:var(--a1)}
+/* level 4 */
+.req{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+.rq{position:relative;border:1px solid var(--line);background:var(--card);border-radius:18px;padding:16px;text-align:left;display:grid;gap:10px;align-content:start;min-height:180px;transition:transform .35s var(--spring),border-color .3s,background .3s,box-shadow .3s}
+.rq:hover{transform:translateY(-3px)}
+.rq[aria-pressed="true"]{border-color:transparent;background:linear-gradient(var(--bg2),var(--bg2)) padding-box,var(--grad) border-box;border:2px solid transparent;box-shadow:0 14px 40px rgba(var(--a1r),.25)}
+.rq[aria-pressed="true"]:after{content:"✓";position:absolute;right:12px;top:12px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--grad);color:var(--on);font-size:13px;font-weight:800;animation:pop .4s var(--spring)}
+.rq h3{font-size:16px;padding-right:26px}
+.voice{display:flex;align-items:center;gap:8px;font:600 11.5px var(--mono);color:var(--warn)}
+.voice .vb{display:flex;gap:2px;align-items:flex-end;height:14px}
+.voice .vb i{width:3px;border-radius:2px;background:var(--warn);opacity:.25}
+.voice .vb i.on{opacity:1;animation:eq 1s ease-in-out infinite alternate}
+.voice .vb i:nth-child(2){animation-delay:.15s}.voice .vb i:nth-child(3){animation-delay:.3s}.voice .vb i:nth-child(4){animation-delay:.45s}.voice .vb i:nth-child(5){animation-delay:.6s}
+@keyframes eq{to{transform:scaleY(.4)}}
+.dat{display:grid;gap:6px;padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--ink2);line-height:1.4;animation:in .6s var(--ease) both}
+.meter{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;font:600 10.5px var(--mono);color:var(--ink3)}
+.meter .tr{height:8px;border-radius:6px;background:var(--line2);overflow:hidden}
+.meter .tr i{display:block;height:100%;width:0;border-radius:6px;transition:width 1s var(--ease) .2s}
+.meter.u .tr i{background:var(--grad)}.meter.f .tr i{background:var(--ember)}
+.rq.best{box-shadow:0 0 0 2px var(--good)}
+.rq .badge{justify-self:start;font:700 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:rgba(var(--goodr),.14);color:var(--good)}
+.phase{display:flex;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap}
+.phase .sel{font:600 13px var(--mono);color:var(--ink3)}
+/* end */
+.end{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:center;margin-top:10px}
+.ring{position:relative;width:260px;height:260px;justify-self:center}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:14}
+.ring .bgc{stroke:var(--line)}
+.ring .fgc{stroke:url(#rg);stroke-linecap:round;stroke-dasharray:691;stroke-dashoffset:691;transition:stroke-dashoffset 2s var(--ease) .3s}
+.ring .c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring .c b{font:800 64px/1 var(--sans);letter-spacing:-.05em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ring .c span{font:600 12px var(--mono);color:var(--ink3);margin-top:6px}
+.rank{font:700 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--a1)}
+.parts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+.part{padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--card)}
+.part span{display:block;font:600 10.5px var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.06em}
+.part b{font:800 22px var(--sans);letter-spacing:-.03em}
+.part b small{font-size:12px;color:var(--ink3);font-weight:600}
+.lessons{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:36px}
+.les{padding:20px;display:grid;gap:8px;align-content:start}
+.les b{font:700 11px var(--mono);color:var(--a1)}
+.les h3{font-size:18px}
+.les p{margin:0;font-size:14px;color:var(--ink2);line-height:1.5}
+.why{margin-top:36px;padding:28px;display:grid;grid-template-columns:1.1fr 1fr;gap:28px;align-items:center}
+.why ol{margin:0;padding:0;list-style:none;display:grid;gap:12px}
+.why li{display:grid;grid-template-columns:30px 1fr;gap:10px;font-size:15px;line-height:1.5}
+.why li i{font:700 12px var(--mono);font-style:normal;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:rgba(var(--a1r),.14);color:var(--a1)}
+.why li b{display:block}
+.why li span{color:var(--ink2);font-size:13.5px}
+.q4{display:grid;gap:10px;padding:18px;border-radius:16px;background:rgba(var(--a1r),.07);border:1px solid rgba(var(--a1r),.25)}
+.q4 b{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--a1)}
+.q4 div{display:grid;grid-template-columns:70px 1fr;gap:10px;font-size:14px}
+.q4 div span:first-child{font:700 13px var(--mono);color:var(--ink)}
+.q4 div span:last-child{color:var(--ink2)}
+@media (max-width:820px){.levels,.parts{grid-template-columns:1fr 1fr}.l2,.case,.end,.why,.lessons{grid-template-columns:1fr}.req{grid-template-columns:1fr 1fr}.map{display:none}.bar{grid-template-columns:72px 1fr 64px}.ring{width:220px;height:220px}}
+@media (max-width:520px){.levels,.req,.clues{grid-template-columns:1fr}.part b{font-size:19px}.wfs-row{grid-template-columns:1fr 1fr}.brand span{display:none}.q{padding:20px}}
+
+/* level 0: UX basics */
+.scene{margin-top:4px;padding:22px 24px;display:grid;grid-template-columns:64px 1fr;gap:18px;align-items:center}
+.scene p{margin:0;font-size:clamp(16px,2vw,19px);line-height:1.6;color:var(--ink)}
+.sic{width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(var(--a3r),.18),rgba(var(--a1r),.14));animation:float 4s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-4px) rotate(-3deg)}}
+.sic svg{width:32px;height:32px;fill:none;stroke:var(--a3);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.qopts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px}
+.qopt{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:18px;text-align:left;display:grid;gap:10px;font-size:16px;font-weight:600;line-height:1.4;min-height:110px;align-content:start;transition:transform .35s var(--spring),border-color .3s,background .3s}
+.qopt:hover{transform:translateY(-4px) rotate(-.5deg);border-color:rgba(var(--a1r),.5)}
+.qopt i{font:700 12px var(--mono);font-style:normal;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--line2);color:var(--ink2)}
+.qopt.right{border-color:var(--good);background:rgba(var(--goodr),.12);transform:scale(1.03)}.qopt.right i{background:var(--good);color:var(--on)}
+.qopt.wrong{border-color:var(--a3);background:rgba(var(--a3r),.08)}
+.qopts.done .qopt{pointer-events:none}.qopts.done .qopt:not(.right):not(.wrong){opacity:.45}
+.ahac{margin-top:22px;padding:26px 28px;display:grid;gap:12px;animation:in .7s var(--ease) both;scroll-margin-top:80px}
+.ahah{display:flex;align-items:center;gap:12px}
+.tag2{font:700 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;border-radius:999px;background:var(--grad);color:var(--on)}
+.ahac .big{font-size:clamp(24px,3.4vw,36px);background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ahac .sub{margin:0}
+.ahag{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px}
+.termc,.apexc{padding:16px 18px;border-radius:16px;display:grid;gap:6px;align-content:start}
+.termc{background:rgba(var(--a1r),.08);border:1px solid rgba(var(--a1r),.25)}
+.apexc{background:rgba(var(--a2r),.07);border:1px dashed rgba(var(--a2r),.35)}
+.termc b,.apexc b{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--a1)}.apexc b{color:var(--a2)}
+.termc h3{font-size:18px}.termc p,.apexc p{margin:0;font-size:14px;line-height:1.5;color:var(--ink2)}.apexc p{color:var(--ink)}
+@media (max-width:820px){.qopts,.ahag{grid-template-columns:1fr}.qopt{min-height:0}.scene{grid-template-columns:48px 1fr}.sic{width:48px;height:48px}}
+/* ================= GAME SKIN: casual-game look (sticker cards, chunky 3D buttons, rounded type, sky world) ================= */
+html:root[data-theme="light"]{--bg:#9EDBFF;--bg2:#FFFFFF;--card:#FFFFFF;--card2:#FFF7E3;--line:#241E5C;--line2:rgba(36,30,92,.08);--ink:#241E5C;--ink2:#4D4789;--ink3:#8C87BD;--a1:#7C5CFF;--a2:#16AFFF;--a3:#FF5A5F;--good:#22C55E;--warn:#FFB020;--a1r:124,92,255;--a2r:22,175,255;--a3r:255,90,95;--goodr:34,197,94;--grad:linear-gradient(180deg,#FFD84D,#FFA51F);--ember:linear-gradient(180deg,#FF8A80,#FF4D6D);--on:#241E5C;--edge:#241E5C;--gold:#FFC83D;--road:#F6DFA9;--grass:#8EDB63;--skyT:#63C3FF;--skyB:#D9F4FF;--cloud:rgba(255,255,255,.95);--shadow:0 6px 0 var(--edge);color-scheme:light}
+html:root[data-theme="dark"]{--bg:#1B1346;--bg2:#2C2174;--card:#2C2174;--card2:#382B8C;--line:#0C0828;--line2:rgba(255,255,255,.08);--ink:#FFFFFF;--ink2:#D6D0FF;--ink3:#A39BDF;--a1:#A98BFF;--a2:#3CC4FF;--a3:#FF6B6B;--good:#4ADE80;--warn:#FFC53D;--a1r:169,139,255;--a2r:60,196,255;--a3r:255,107,107;--goodr:74,222,128;--grad:linear-gradient(180deg,#FFD84D,#FFA51F);--ember:linear-gradient(180deg,#FF8A80,#FF4D6D);--on:#241E5C;--edge:#0C0828;--gold:#FFC83D;--road:#4A3D9A;--grass:#1F6B4E;--skyT:#140E3A;--skyB:#3A2384;--cloud:rgba(169,139,255,.22);--shadow:0 6px 0 var(--edge);color-scheme:dark}
+:root{--sans:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Nunito","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;--text:var(--sans);--mono:var(--sans)}
+body{background:linear-gradient(180deg,var(--skyT),var(--skyB)) fixed}
+:root[data-theme="dark"] body{background:radial-gradient(1.5px 1.5px at 10% 20%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 30% 70%,#fff 50%,transparent),radial-gradient(2px 2px at 55% 15%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 80% 40%,#fff 50%,transparent),radial-gradient(1.5px 1.5px at 90% 80%,#fff 50%,transparent),radial-gradient(2px 2px at 70% 60%,#fffbe0 50%,transparent),linear-gradient(180deg,var(--skyT),var(--skyB)) fixed;background-size:420px 420px,380px 380px,520px 520px,460px 460px,400px 400px,600px 600px,100% 100%}
+body:after{content:"";position:fixed;left:-20%;right:-20%;bottom:-120px;height:220px;border-radius:50% 50% 0 0;background:var(--grass);border-top:4px solid var(--edge);z-index:0;pointer-events:none}
+.aura{filter:none;opacity:1;inset:0}
+.aura i{border-radius:999px;background:var(--cloud)!important;height:56px!important;box-shadow:40px -22px 0 4px var(--cloud),90px -6px 0 -4px var(--cloud)}
+.aura i:nth-child(1){width:150px!important;left:8%!important;top:16%!important;animation:cloud 60s linear infinite}
+.aura i:nth-child(2){width:120px!important;left:62%!important;top:30%!important;animation:cloud 80s linear infinite -30s;transform:scale(.8)}
+.aura i:nth-child(3){width:170px!important;left:40%!important;top:62%!important;animation:cloud 95s linear infinite -60s;opacity:.8}
+@keyframes cloud{from{translate:-30vw 0}to{translate:110vw 0}}
+h1,h2{font-weight:900;color:#fff;-webkit-text-stroke:7px var(--edge);paint-order:stroke fill;text-shadow:0 6px 0 var(--edge);letter-spacing:-.01em}
+h2{-webkit-text-stroke:5px var(--edge);text-shadow:0 4px 0 var(--edge)}
+:root[data-theme="dark"] h1,:root[data-theme="dark"] h2{text-shadow:0 6px 0 var(--edge)}
+em,em.w{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:var(--gold);-webkit-text-fill-color:currentColor}
+h3{font-weight:900}
+.lead,.sub{color:var(--ink);font-weight:600}
+main>.scr>.sub,main>.scr>.lead,main .st>.sub,main .st>.lead,main .scr>p.sub{background:var(--card);border:3px solid var(--edge);border-radius:16px;padding:10px 14px;box-shadow:0 4px 0 var(--edge);display:inline-block;align-self:flex-start}
+.card{background:var(--card);border:3px solid var(--edge);border-radius:24px;box-shadow:0 6px 0 var(--edge);backdrop-filter:none;-webkit-backdrop-filter:none}
+.btn{background:var(--grad);color:var(--on);border:3px solid var(--edge);border-radius:18px;box-shadow:0 6px 0 var(--edge);font-weight:900;font-size:17px;padding:13px 26px;transition:transform .12s,box-shadow .12s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 0 var(--edge)}
+.btn:active{transform:translateY(5px);box-shadow:0 1px 0 var(--edge)}
+.btn.ghost{background:var(--card);color:var(--ink);border:3px solid var(--edge);box-shadow:0 6px 0 var(--edge)}
+.tbtn{border:2.5px solid var(--edge);background:var(--card);color:var(--ink);font-weight:800;box-shadow:0 3px 0 var(--edge);border-radius:12px}
+.tbtn:active{transform:translateY(3px);box-shadow:none}
+.hud{background:var(--card);border-bottom:3px solid var(--edge);backdrop-filter:none;-webkit-backdrop-filter:none}
+.brand{font-weight:900}.brand i{border:2.5px solid var(--edge);background:var(--a1)}
+.score{display:flex;align-items:center;gap:6px;border:2.5px solid var(--edge);background:var(--card2);box-shadow:0 3px 0 var(--edge);font-weight:900;border-radius:999px}
+.score:before{content:"";width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFF1A8,var(--gold) 60%,#E59A00);border:2.5px solid var(--edge);flex:none}
+.score b{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--ink);font-size:16px}
+.map{gap:0;align-items:center}
+.map span{width:24px;height:24px;border-radius:50%;border:3px solid var(--edge);background:var(--card);overflow:visible}
+.map span+span{margin-left:22px}
+.map span+span:before{content:"";position:absolute;right:100%;top:50%;width:25px;height:4px;margin-top:-2px;background:var(--edge)}
+.map span.done{background:var(--good)}
+.map span.cur{background:var(--gold);animation:hop 1s ease-in-out infinite}
+.map span.cur:after{display:none}
+@keyframes hop{50%{transform:translateY(-4px)}}
+.kick{background:var(--a1);color:#fff;border:3px solid var(--edge);box-shadow:0 4px 0 var(--edge);font-weight:900;font-size:12.5px;letter-spacing:.04em;border-radius:12px;transform:rotate(-1.5deg)}
+.kick:before{background:var(--gold);border:2px solid var(--edge);width:10px;height:10px}
+.note{color:var(--ink);font-weight:600;background:var(--card);border:2px solid var(--edge);border-radius:10px;padding:6px 10px;display:inline-flex;align-self:flex-start}
+.note:before{display:none}
+.role{border:2.5px solid var(--edge);background:var(--card);color:var(--ink);font-weight:800;box-shadow:0 3px 0 var(--edge)}
+.role[aria-pressed="true"]{background:var(--gold);color:var(--on);transform:translateY(-2px)}
+.mtag{background:var(--a3);color:#fff;border:2.5px solid var(--edge);font-weight:900}.mtag.q{background:var(--a2);color:#fff}
+.mmeta{color:var(--ink2)!important;font-weight:800!important}
+.mode h3{font-size:26px}
+.mg{background:linear-gradient(180deg,#FFF7E3,#fff);border-color:var(--edge);box-shadow:0 8px 0 var(--edge);transform:rotate(-.6deg)}
+:root[data-theme="dark"] .mg{background:var(--card2)}
+.mprev{border:3px solid var(--edge);background:linear-gradient(180deg,var(--skyB) 0 55%,var(--grass) 55%)}
+.mprev .tr{border-top:8px solid var(--road);top:calc(55% - 4px)}
+.mprev .sb{border:2.5px solid var(--edge);background:var(--card);top:14%;height:52%;border-top:8px solid var(--a1)}
+.mprev .sb:nth-of-type(3){border-top-color:var(--a3);background:var(--card)}
+.mprev b{border:2.5px solid var(--edge);width:16px;height:16px;top:calc(55% - 9px)}
+.mlv span{border:2px solid var(--edge);background:var(--card2)}
+/* quiz bits */
+.qopt,.opt,.rq,.wfs,.tool{border:3px solid var(--edge)!important;box-shadow:0 5px 0 var(--edge);background:var(--card)}
+.qopt:hover,.opt:hover{transform:translateY(-3px);box-shadow:0 8px 0 var(--edge)}
+.qopt i,.opt i{border:2px solid var(--edge);background:var(--card2);color:var(--ink)}
+.qopt.right,.opt.right{background:#BBF7D0;color:#14532D}.qopt.right i,.opt.right i{background:var(--good);color:#fff}
+.qopt.wrong,.opt.wrong{background:#FECACA;color:#7F1D1D}
+:root[data-theme="dark"] .qopt.right,:root[data-theme="dark"] .opt.right{background:#166534;color:#fff}:root[data-theme="dark"] .qopt.wrong,:root[data-theme="dark"] .opt.wrong{background:#7F1D1D;color:#fff}
+.sic{border:3px solid var(--edge);background:var(--gold)}.sic svg{stroke:var(--edge);stroke-width:2.2}
+.tag2{background:var(--gold);color:var(--on);border:2.5px solid var(--edge);font-weight:900}
+.ahac .big{color:#fff}
+.termc,.apexc{border:2.5px solid var(--edge)!important;background:var(--card2)}
+.termc b,.apexc b{color:var(--a1)}
+.pts{border:2.5px solid var(--edge);background:var(--good);color:#fff;font-weight:900;box-shadow:0 3px 0 var(--edge)}
+.pts.lo{background:var(--a3);color:#fff}
+.ins{border:2.5px solid var(--edge);background:var(--card2)}
+.gval{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--a3);-webkit-text-fill-color:currentColor;-webkit-text-stroke:0}
+.gval small{-webkit-text-fill-color:var(--ink3)}
+input[type=range]{border:2.5px solid var(--edge);height:16px}
+input[type=range]::-webkit-slider-thumb{width:34px;height:34px;background:var(--gold);border:3px solid var(--edge);box-shadow:0 4px 0 var(--edge)}
+.tr{border:2px solid var(--edge)}
+.bar .tr{height:20px}.bar.you .tr i{background:var(--a3)}.bar.real .tr i{background:var(--good)}
+.bar.real b,.pot b,.ring .c b,.rvm .hl b{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:var(--ink);-webkit-text-fill-color:currentColor}
+.ring .c b{color:#fff;-webkit-text-stroke:6px var(--edge);paint-order:stroke fill;text-shadow:0 5px 0 var(--edge)}
+.ring{background:var(--card);border:4px solid var(--edge);border-radius:50%;box-shadow:0 8px 0 var(--edge)}
+.verdict.g{background:#DCFCE7;border:3px solid var(--edge)}.verdict.b{background:#FFE4E6;border:3px solid var(--edge)}
+:root[data-theme="dark"] .verdict.g{background:#14532D}:root[data-theme="dark"] .verdict.b{background:#4C1D2B}
+.verdict p{color:var(--ink)}
+.clue .f{background:var(--a1);color:#fff;border:3px solid var(--edge)}.clue .f span{color:#fff}.clue .f .cost{color:var(--gold)}
+.clue .b{border:3px solid var(--edge)}
+/* game mode */
+.hs{border:3px solid var(--edge);background:var(--card);box-shadow:0 4px 0 var(--edge)}
+.hs b{font-weight:900}
+.hbar{height:16px;border:3px solid var(--edge);background:var(--card)}.hbar i{background:var(--gold)}
+.cvw{border:4px solid var(--edge);box-shadow:0 8px 0 var(--edge);background:linear-gradient(180deg,var(--skyB) 0 44%,var(--grass) 44%)}
+.cvw[data-tool="lens"]{border-color:var(--a1);box-shadow:0 8px 0 var(--a1)}
+.cvw[data-tool="fix"]{border-color:var(--good);box-shadow:0 8px 0 var(--good)}
+.tool{font-size:16px;font-weight:900;border-radius:18px;padding:12px 20px}
+.tool em{color:var(--gold);font-size:14px;-webkit-text-stroke:0}
+#tL[aria-pressed="true"]{background:var(--a1);color:#fff;transform:translateY(-3px)}
+#tF[aria-pressed="true"]{background:var(--good);color:#fff;transform:translateY(-3px)}
+.loudp h3{font-size:16px}
+.lm{background:#FFF1C9;border:3px solid var(--edge);color:#241E5C}
+:root[data-theme="dark"] .lm{background:#5A4300;color:#fff}
+.at{border:3px solid var(--edge);font-weight:900;background:var(--card);color:var(--ink);box-shadow:0 4px 0 var(--edge)}
+.at.good{background:var(--good);color:#fff;border-color:var(--edge)}.at.bad{background:var(--a3);color:#fff;border-color:var(--edge)}
+.aoc{border:4px solid var(--edge);box-shadow:0 8px 0 var(--edge)}
+.tips b{background:var(--gold);color:var(--on);border:2.5px solid var(--edge)}
+.cd{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--gold);-webkit-text-stroke:10px var(--edge);paint-order:stroke fill;text-shadow:0 10px 0 var(--edge);font-size:140px}
+.rvm div{border:3px solid var(--edge);background:var(--card2)}.rvm .hl{background:var(--gold);border-color:var(--edge)}.rvm .hl b,.rvm .hl span{color:var(--on)}
+.rvt i{background:var(--gold);border:3px solid var(--edge)}
+.les{border:3px solid var(--edge);border-left-width:8px;background:var(--card2)}
+.tb i{background:var(--gold)}.tb.ret i{background:var(--good)}
+.bdg{border:3px solid var(--edge)}.bdg.got{background:#FFF1C9;transform:rotate(-1deg)}:root[data-theme="dark"] .bdg.got{background:#5A4300}
+.bdg i{font-size:34px;-webkit-text-stroke:2px var(--edge);paint-order:stroke fill}
+.part{border:3px solid var(--edge);box-shadow:0 4px 0 var(--edge);background:var(--card)}
+.q4{border:3px solid var(--edge);background:var(--card2)}
+.why li i,.les b{color:var(--a1)}
+.wf-top{border-bottom:3px solid var(--edge)}
+.lv .ic{border:2.5px solid var(--edge);background:var(--gold)}
+
+.sub:empty,.lead:empty{display:none!important}
+
+/* user-centred card on end screen */
+.core{display:grid;gap:14px;padding:22px;border-radius:22px;background:var(--card2);border:3px solid var(--edge);box-shadow:0 6px 0 var(--edge)}
+.coreh{font-size:12.5px;font-weight:900;letter-spacing:.06em;color:var(--a1)}
+.coreq{margin:0;font-size:20px;font-weight:900;line-height:1.45;color:var(--ink)}
+.cflow{display:grid;grid-template-columns:1fr 54px auto;align-items:center}
+.cits{display:grid;gap:10px}
+.cit{display:grid;gap:2px;padding:9px 12px;border-radius:14px;background:var(--card);border:2.5px solid var(--edge);box-shadow:0 3px 0 var(--edge);animation:in .6s var(--spring) both;animation-delay:calc(var(--k)*.15s + .3s)}
+.cit b{font-size:15px;font-weight:900}.cit span{font-size:13px;font-weight:700;color:var(--ink2)}
+.clines{width:100%;height:100%;min-height:150px}
+.clines path{fill:none;stroke:var(--edge);stroke-width:2.5;stroke-dasharray:5 5;vector-effect:non-scaling-stroke;animation:dash 1.2s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.cuser{display:grid;justify-items:center;gap:6px}
+.cuser i{position:relative;width:84px;height:84px;border-radius:50%;background:var(--a2);border:3.5px solid var(--edge);box-shadow:0 5px 0 var(--edge),0 0 0 10px rgba(var(--a2r),.18);animation:hop 1.8s ease-in-out infinite}
+.cuser i:before{content:"";position:absolute;left:21px;top:28px;width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:29px 0 0 #fff}
+.cuser i:after{content:"";position:absolute;left:28px;top:48px;width:26px;height:12px;border:3.5px solid var(--edge);border-top:0;border-radius:0 0 26px 26px}
+.cuser b{font-size:16px;font-weight:900;padding:3px 14px;border-radius:999px;background:var(--gold);border:2.5px solid var(--edge)}
+.corep{margin:0;padding:10px 14px;border-radius:14px;background:var(--gold);border:2.5px solid var(--edge);font-weight:900;font-size:15px;color:var(--on)}
+@media (max-width:520px){.cflow{grid-template-columns:1fr 36px auto}.cuser i{width:64px;height:64px}.cuser i:before{left:15px;top:21px;width:10px;height:10px;box-shadow:22px 0 0 #fff}.cuser i:after{left:20px;top:36px;width:20px;height:9px}}
+.whys{margin:14px 0 0;font-size:15px;font-weight:700;color:var(--ink2);line-height:1.5}
+.why ol{margin-top:14px!important}
+.cuser .av{width:88px;height:88px;border-radius:50%;box-shadow:0 5px 0 var(--edge),0 0 0 10px rgba(var(--a2r),.18);animation:hop 1.8s ease-in-out infinite;overflow:hidden}
+@media (max-width:520px){.cuser .av{width:66px;height:66px}}
+
+/* membership CTA */
+.mem{margin-top:30px;padding:26px;display:grid;grid-template-columns:300px 1fr;gap:30px;align-items:center;background:linear-gradient(135deg,#FFF7E3,#fff 60%)}
+:root[data-theme="dark"] .mem{background:var(--card2)}
+.vip{position:relative;aspect-ratio:1.586;border-radius:18px;border:3.5px solid var(--edge);box-shadow:0 8px 0 var(--edge);overflow:hidden;padding:18px;display:grid;align-content:space-between;color:#3B2A00;background:linear-gradient(135deg,#FFE58A 0%,#FFC83D 45%,#F4A300 100%);transform:rotate(-4deg);transition:transform .5s var(--spring)}
+.vip:hover,.vip.on{transform:rotate(0) scale(1.04)}
+.vip .vt{font-size:11px;font-weight:900;letter-spacing:.14em}
+.vip b{font-size:22px;font-weight:900;letter-spacing:-.01em}
+.vip .vno{font-size:11px;font-weight:800;letter-spacing:.12em;opacity:.75}
+.vip .vname{position:absolute;right:18px;bottom:18px;font-size:13px;font-weight:900}
+.vchip{position:absolute;right:18px;top:18px;width:40px;height:30px;border-radius:7px;border:2.5px solid #7A5200;background:linear-gradient(135deg,#FFF3C4,#E0A800)}
+.vip .shine{position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.65) 50%,transparent 60%);animation:shine 3.2s ease-in-out infinite}
+@keyframes shine{from{transform:translateX(-60%)}to{transform:translateX(60%)}}
+.mtxt{display:grid;gap:10px;justify-items:start}
+.mtg{font-size:12px;font-weight:900;padding:4px 12px;border-radius:999px;background:var(--a3);color:#fff;border:2.5px solid var(--edge);animation:hop 1.4s ease-in-out infinite}
+.mtxt h3{font-size:24px}
+.mjoke{margin:0;font-size:16px;font-weight:800;line-height:1.5}
+.perks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.perks li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;font-weight:700;color:var(--ink2)}
+.perks li:before{content:"✓";flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:900;background:var(--good);color:#fff;border:2px solid var(--edge)}
+.fee{margin:2px 0 4px;font-size:13.5px;font-weight:900;color:var(--a1)}
+.joined{margin:4px 0 0;padding:10px 14px;border-radius:14px;background:var(--good);color:#fff;border:2.5px solid var(--edge);font-weight:900;animation:popin .4s var(--spring)}
+@keyframes popin{from{opacity:0;scale:.7}}
+@media (max-width:820px){.mem{grid-template-columns:1fr}.vip{max-width:320px;justify-self:center}}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-mood="data">
+<div class="aura" aria-hidden="true"><i></i><i></i><i></i></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+<header class="hud">
+ <div class="brand"><i></i><span>APEX Data Insight</span></div>
+ <div class="map" id="map" aria-hidden="true"></div>
+ <div class="score" id="score" aria-live="polite"><b id="sc">0</b></div>
+ <button class="tbtn" id="lang">EN</button>
+ <button class="tbtn" id="theme"></button>
+</header>
+<main id="app"></main>
+<script>
+/* ---------- content ---------- */
+const T={
+cn:{
+ theme:['浅色','深色'],lang:'EN',pts:'分',next:'下一题',go:'继续',
+ intro:{k:'APEX Data Insight · 一个 6 分钟的小游戏',h:'你真的了解<br><em>APEX 的用户</em>吗？',lead:'用户很少主动告诉我们哪里不好用。先用 8 道生活题看懂几个关键概念，再用你的直觉和真实的用户行为数据比一比。',role:'你平时的角色是？',roles:['设计师','产品 / BA','开发','业务用户'],start:'开始挑战',
+  lv:[['LEVEL 1','用户体验常识','8 道生活题，看懂我们为什么研究用户'],['LEVEL 2','找到卡点','看一段用户回放，指出他卡在哪'],['LEVEL 3','数据侦探','用线索破案，选出对的设计方案'],['LEVEL 4','需求排序','只有两个 sprint，先做哪个？']]},
+ l0:{k:'LEVEL 1 · 用户体验常识',aha:'原来如此',term:'记住这个词',apex:'放到 APEX 里',
+  qs:[
+   {ic:'dish',s:'餐厅老板问每桌客人：“菜好吃吗？”大家都笑着说“还行”。可是收盘子时发现，一半的人剩了大半盘。',q:'老板应该更相信哪一个？',o:['客人说的“还行”','剩下的大半盘菜','两个都不信'],a:1,
+    big:'人们说的，和做的，常常不一样。',exp:'当面说“还行”是客气，剩下的菜才是真实反应。行为不会客套。',t:['行为数据','用户实际做了什么：点了哪里、停了多久、在哪离开，而不只是他们怎么说。'],ap:'权限指南一个月被访问 304 次，却很少有人主动说“我找不到帮助”。'},
+   {ic:'box',s:'一个外卖 App，10 单里有 7 单能准时送到，另外 3 单要么超时，要么送错。',q:'下个月你还会继续用它吗？',o:['会，70% 已经不错了','大概率会换一家','无所谓'],a:1,
+    big:'“能用”不等于“用得成”。',exp:'对用户来说，每一次失败都是 100% 的失败。用户在乎的是：我想做的事，最后做成了没有。',t:['任务成功率','完成的任务 ÷ 开始的任务。它衡量的是用户有没有把事情办成，而不是功能有没有上线。'],ap:'34 次权限申请只有 16 次走到提交，成功率不到 50%。'},
+   {ic:'drill',s:'同事提了一个需求：“帮我在报表页加一个导出 Excel 的按钮。”',q:'他真正想要的，最可能是什么？',o:['一个导出按钮','把数据拿出去，完成某个计算或汇报','一个更好看的报表页'],a:1,
+    big:'人们要的不是电钻，是墙上的那个洞。',exp:'需求往往是用户自己想出来的解决办法。多问一句“导出之后你接下来做什么？”，可能发现他每次都在 Excel 里算同一个汇总。直接在系统里给出这个汇总，比一个按钮更好。',t:['用户目标','需求背后真正要完成的事。把需求做完只是交付，帮用户达成目标才是价值。'],ap:'做每个需求前问三个问题：谁在用？他要完成什么？现在卡在哪？'},
+   {ic:'pin',s:'你开车用导航，它连续 3 次弹出“路线计算失败，请重试”。',q:'第 4 次你最可能做什么？',o:['继续点重试','换个 App，或者自己看路牌','打电话投诉导航公司'],a:1,
+    big:'每一次报错，都在消耗信任。',exp:'大多数人不会投诉，只会绕路或者干脆离开。报错越多，用户越不相信系统，越想“自己来”。',t:['报错率','遇到错误的任务 ÷ 开始的任务。它告诉我们用户在哪一步、被什么错误挡住了。'],ap:'在 APEX 里“自己来”往往意味着回到 Excel 手工计算，财资数据的风险反而更高。'},
+   {ic:'people',s:'100 个用户在系统里遇到了同一个问题。',q:'你觉得会有多少人主动反馈给我们？',o:['大部分人都会说','差不多一半','只有很少几个'],a:2,
+    big:'用户不说，不代表没有问题。',exp:'大多数人会默默忍着、绕开，或者干脆不用了。只靠反馈渠道，我们看到的只是冰山一角。',t:['沉默信号','重试、绕路、停顿、离开。这些没说出口的行为，就是用户在给我们反馈。'],ap:'APEX Data Insight 做的，就是在不打扰用户的情况下，把这些沉默信号找出来。'},
+   {ic:'clock',s:'某个操作你每天要做 20 次。因为设计不顺，每次多花 30 秒。',q:'一年下来大概多花多少时间？',o:['大约 4 小时','大约 40 小时','大约 400 小时'],a:1,
+    big:'30 秒，一年就是一个星期。',exp:'20 次 × 30 秒 = 每天 10 分钟；按一年约 250 个工作日算，就是 40 多个小时，相当于一个人一整周的工作量。',t:['效率','完成一个任务需要的时间（我们看中位数）。省下的每一秒，都会乘以使用人数和使用次数。'],ap:'如果 APEX 有 50 位用户都这样，一年就是约 2,000 小时。'},
+   {ic:'gym',s:'一家健身房 1 月份办了 100 张新卡。到了 3 月，只有 20 个人还会来。',q:'老板第一步应该做什么？',o:['多发传单，再拉 100 个新会员','先弄清楚：是大家坚持不下去，还是健身房本身有问题','直接降价'],a:1,
+    big:'留存是警报，不是诊断。',exp:'可能真的是大家坚持不下去，也可能是器械总坏、高峰期排长队。留存只告诉你“人没留下”，原因要再往下看：离开的人在离开前，是不是总遇到同样的麻烦？',t:['留存率','上个月在用、这个月还在用的人 ÷ 上个月在用的人。它回答的是：用户还愿意回来吗？'],ap:'APEX 是工作工具，用户很难“坚持不下去”，更多是绕路去 Excel。留存下降时，我们看成功率和报错率：如果离开的人都在同一步反复报错，那就是我们要修的地方。'},
+   {ic:'chat',s:'数据面板显示：很多人在某个流程的第 3 步离开。',q:'你现在知道他们为什么离开了吗？',o:['知道了，数据已经说明一切','知道在哪里，但还要去问用户为什么','不用知道原因，直接改就行'],a:1,
+    big:'数据告诉你哪里，用户告诉你为什么。',exp:'行为数据很擅长回答“在哪里、有多少”，但“为什么”要靠问卷和访谈。两者一起用，才不会改错地方。',t:['数据 + 访谈','先用数据找到问题，再用访谈理解原因，最后用数据验证改进有没有用。'],ap:'Q4 我们在核心 use case 上，同时做埋点、NPS 问卷和用户访谈。'}]},
+ l1:{k:'LEVEL 2 · 直觉 vs 数据',lock:'锁定我的猜测',you:'你的猜测',real:'真实数据',saw:'数据告诉我们',did:'我们做了什么',src:'真实数据：APEX 审计日志（NII 相关），2026-05-23 至 06-23',
+  qs:[
+   {q:'一个月里，有多少次访问落在了“权限指南”页面？',h:'这些访问背后，很少有人主动告诉过我们。',min:0,max:500,step:1,a:304,u:'次',saw:'304 次访问说明：很多人卡在“怎么开通权限、找谁帮忙”上，但很少有人告诉我们。',did:'把 Contact us 和 Help & Support 合并，高频问题按 use case 列出，并放到登录页。'},
+   {q:'34 次权限申请里，有几次真正走到了“提交”？',h:'其余的都在半路放弃了。',min:0,max:34,step:1,a:16,u:'次',saw:'不到一半。大部分用户在申请流程里迷路了，而且没有留下任何反馈。',did:'在帮助中心里给出清楚的申请路径和联系人。'},
+   {q:'有多少次，用户打开 APEX 后又直接跳回了 Home 页面？',h:'很多人还没开始用就离开了。',min:0,max:400,step:1,a:187,u:'次',saw:'没有权限的用户来了就走，因为登录页上什么都看不到。',did:'把 About APEX 合并进登录页，让每个人第一秒就知道 APEX 能做什么。'}]},
+ l2:{k:'LEVEL 2 · 找到卡点',h:'看一段用户回放，<em>他卡在哪一步？</em>',sub:'这是一段示例的用户旅程（虚构页面）。你只能看到他的鼠标，就像我们平时只能看到“用户来了又走了”。看完后，点击你认为他卡住的那一步。',app:'示例页面 · 报表分析',home:'← Home',
+  steps:['选择数据集','设置筛选','更新图表','导出'],play:'播放回放',replay:'再看一遍',ask:'他卡在哪一步？点击它',err:'图表更新失败，请重试',gone:'用户离开了',gone2:'没有反馈，没有工单，什么都没说。',
+  logH:'行为日志',lockH:'行为日志 · 未打开',lockP:'你现在看到的，就是没有数据时我们能看到的：用户点了几下，然后离开了。先凭观察猜一猜。',log:['打开报表分析页面','选择数据集 ✓','设置筛选 ✓','点击「更新图表」→ 报错 E-204','回去修改筛选','再点「更新图表」→ 报错 E-204','第三次点击 → 报错 E-204','停在「导出」，图表为空无法导出','返回 Home，离开'],
+  right:'对，就是“更新图表”。',wrong:'其实是第 3 步“更新图表”。',wrongP:'从外面看，他好像在“设置筛选”和“导出”上也犹豫了。只有行为日志能告诉你真正的原因。',fun:'这一步的报错率（示意）',funV:[4,6,31,5],
+  saw:'没有人投诉，但同一个用户连点 3 次后离开。这就是“沉默信号”。',did:'这就是我们在 Q4 追踪任务成功率和报错率的原因：用数据找到卡点，优先修复。',il:'旅程与报错率为示意，依据日志中观察到的模式改编'},
+ l3:{k:'LEVEL 3 · 数据侦探',pot:'本案奖金',cost:'翻开 −15',clueH:'线索',optH:'你的方案是？',gutTag:'凭直觉',real:'真实数据',ill:'示意',flip:'点击翻开',
+  ok:'破案！',bad:'差一点。',did:'我们真正做了什么',
+  cases:[
+   {t:'案件 1 / 3 · 帮助去哪了？',b:'新用户第一个月的体验很差，但很少有人说出来。到底发生了什么？',
+    clues:[['留存率','新用户次月回来的比例偏低','ill'],['成功率','34 次权限申请只有 16 次走到提交','real'],['报错率','“权限不足”报错集中在第一次进入时','ill'],['行为路径','304 次访问权限指南；36 次 NII 流程中途绕去指南','real']],
+    opts:['给所有人发一封培训邮件','把联系我们和帮助中心合并，按 use case 列高频问题，并放到登录页','在权限指南里再加两页说明文字'],a:1,
+    why:['邮件发完就被遗忘，用户卡住的那一刻依然没人帮。','对。用户在卡住的那一刻就需要答案，而且要按他们手上的 use case 找到。','用户已经在指南上来回 304 次了，问题不是文字不够，而是找不到对的答案和人。'],
+    did:'这正是改进 1：帮助与支持合并上线，高频问题按 use case 分类，登录页也有入口。'},
+   {t:'案件 2 / 3 · 来了就走',b:'很多人打开 APEX 后几秒钟就离开了，系统里没有任何报错。',
+    clues:[['留存率','首次访问、没有登录的用户几乎不再回来','ill'],['成功率','没有权限的用户无法开始任何任务','ill'],['报错率','没有明显报错（沉默的流失）','ill'],['行为路径','187 次从 APEX 直接跳回 Home','real']],
+    opts:['把 About APEX 合并进登录页，让没权限的人也能看懂 APEX','给登录页加更严格的输入校验','做一份 onboarding PPT 发给大家'],a:0,
+    why:['对。留存从登录之前就开始了：让每个人第一秒就知道 APEX 是什么、怎么申请。','没有报错，校验不是问题所在。','PPT 不在用户离开的那一刻出现。'],
+    did:'这正是改进 2：About APEX 并入登录页，并链接到申请权限和帮助与支持。'},
+   {t:'案件 3 / 3 · 最常用，也最难用？',b:'一个使用量很高的功能，大家却用得并不开心。（示意案例）',
+    clues:[['留存率','留存稳定，大家离不开它','ill'],['成功率','图表类任务成功率只有 58%','ill'],['报错率','第 3 步“更新图表”报错率 31%','ill'],['行为路径','同一用户连点“更新” 3 次后离开','ill']],
+    opts:['重新设计整个页面的配色和图标','再增加 5 种新的图表类型','修复图表更新错误，导出改成异步，并持续追踪成功率'],a:2,
+    why:['好看不能解决报错。','功能更多，报错还在。','对。数据精准指向第 3 步：先修复它，再用成功率验证效果。'],
+    did:'这是改进 3 的思路：核心 use case 的成功率与报错率成为 Q4 KPI。'}]},
+ l4:{k:'LEVEL 4 · 需求排序',h:'你只有<em>两个 sprint</em>，先做哪两个？',p1:'先凭“谁说得最大声”选两个。',p2:'现在打开数据。要改主意吗？',sel:'已选',lock1:'就这么定',open:'打开数据看看',lock2:'最终确认',voiceL:'会上被提',times:'次',use:'使用量',fric:'摩擦',best:'数据推荐',
+  res:'安静的需求，往往最重要',resP:'最大声的需求不一定影响最多人。“帮助中心”从没有人在会上提过，但每个月有 304 次访问在找它。',
+  reqs:[['深色模式',5,15,5,'很少任务受影响，没有相关报错'],['修复高频功能里的图表更新报错',1,95,85,'使用量很高，第 3 步报错率 31%'],['首页加一段欢迎动画',3,20,0,'没有相关的行为信号'],['帮助中心按 use case 列出高频问题',0,70,75,'304 次访问权限指南，16/34 申请完成'],['导出新增 PDF 格式',4,25,10,'导出使用量较低'],['简化 NII 设置步骤',2,60,45,'核心 journey，部分运行被拒']],bestIdx:[1,3],
+  il:'需求与指标为示意，“帮助中心”一项的信号来自真实数据'},
+ end:{k:'挑战完成',h:'你的用户洞察力',of:'满分 800',parts:['用户体验常识','找到卡点','数据侦探','需求排序'],
+  ranks:[[80,'用户行为侦探','你已经习惯先看数据再下判断。'],[55,'正在觉醒的洞察者','直觉不错，数据让你更准。'],[0,'直觉派','直觉很宝贵，但用户的行为会给你惊喜。']],
+  gut:'凭直觉破案',gutN:'次',tipH:'给你的一个小行动',tips:['下次画稿前，先看一眼这条 journey 的成功率和报错率。','写需求时，附上一条用户行为数据作为依据。','埋点就是给用户装上“麦克风”：5 个标准事件就够了。','你的每一次点击，都在悄悄帮我们改进 APEX。'],
+  lesH:'这个游戏想说的三件事',les:[['01','用户不会告诉你','304 次访问、187 次离开，却很少有人说出来。行为数据是用户没说出口的反馈。'],['02','数据告诉你改哪里','不是重做整个页面，而是第 3 步“更新图表”。精准，才省时间。'],['03','最大声 ≠ 最重要','用数据给需求排序，把 sprint 花在影响最多人的地方。']],
+  whyH:'把用户行为，<br><em>放进每天的思考里</em>',whyS:'讨论需求、评审设计、准备上线时，都用这几个维度看一看用户：',why:[['会回来吗？','留存：上个月在用的人，这个月还在吗？'],['做成了吗？','成功率：开始的任务，最后完成了多少？'],['卡在哪了？','报错与行为路径：哪一步出错、重试、绕路、离开？'],['花了多久？','效率：完成一件事要多久，每一步都有必要吗？'],['为什么？','用户的声音：数据告诉你在哪，问卷和访谈告诉你为什么。']],
+  core:{h:'为什么要分析用户行为',q:'每一个需求、每一个设计、每一次产出，最后都落在一个真实的用户身上。',it:[['需求','解决的是不是真问题？'],['设计','有没有让事情更顺？'],['产出','有没有真的帮到人？']],u:'用户',p:'让这几个问题，成为我们每次开会、评审、上线时的习惯。'},
+  mem:{tag:'会员招募中',h:'APEX Data Insight 会员',joke:'想比别人更早知道，你负责的 use case 用户都在想什么？欢迎加入会员。',perks:['抢先看到你负责的 use case 的用户洞察','需求和设计，有真实的用户行为数据撑腰','上线前后，用数字看到每次改动的效果'],fee:'会员费：0 元。唯一条件：愿意听听用户在说什么。',join:'我要入会',joined:'欢迎入会！找 APEX UX 团队，领取你的第一份用户洞察。',no:'会员编号',you:'未来的你'},
+  again:'再玩一次',cta:'想知道你负责的 use case，用户到底是怎么用的？一起来看数据，从找 APEX UX 团队聊聊开始。',src:'真实数据仅包括 304、16/34、36、187，来自 APEX 审计日志（NII 相关，2026-05-23 至 06-23）；其余为依据日志模式改编的示意数据。'}
+},
+en:{
+ theme:['Light','Dark'],lang:'中文',pts:'pts',next:'Next',go:'Continue',
+ intro:{k:'APEX Data Insight · a 6-minute game',h:'Do you really know<br><em>APEX users?</em>',lead:'Users rarely tell us what isn’t working. Start with 8 everyday questions on a few key ideas, then pit your gut against real user behaviour data.',role:'What’s your day-to-day role?',roles:['Designer','Product / BA','Developer','Business user'],start:'Start the challenge',
+  lv:[['LEVEL 1','UX basics','8 everyday questions on why we study users'],['LEVEL 2','Find the friction','Watch a replay and spot where they got stuck'],['LEVEL 3','Data detective','Use clues to crack the case and pick the right design'],['LEVEL 4','Prioritise','Two sprints only. What goes first?']]},
+ l0:{k:'LEVEL 1 · UX basics',aha:'Aha',term:'The term',apex:'In APEX',
+  qs:[
+   {ic:'dish',s:'A restaurant owner asks every table: “How was the food?” Everyone smiles and says “Fine.” But clearing up, half the plates are mostly full.',q:'Which should the owner believe?',o:['The guests saying “fine”','The half-full plates','Neither'],a:1,
+    big:'What people say and what they do often differ.',exp:'“Fine” is politeness; the leftovers are the real reaction. Behaviour doesn’t do small talk.',t:['Behaviour data','What users actually do: where they click, how long they pause, where they leave, not just what they say.'],ap:'The access guide got 304 visits in a month, yet hardly anyone said “I can’t find help”.'},
+   {ic:'box',s:'A food delivery app gets 7 out of 10 orders to you on time. The other 3 are late or wrong.',q:'Will you still use it next month?',o:['Yes, 70% is pretty good','Probably switch to another app','Don’t care'],a:1,
+    big:'“It works” isn’t the same as “I got it done”.',exp:'For the user, every failure is a 100% failure. What they care about is whether the thing they set out to do got done.',t:['Task success rate','Tasks completed ÷ tasks started. It measures whether users got the job done, not whether the feature shipped.'],ap:'Only 16 of 34 access requests reached submit: below 50% success.'},
+   {ic:'drill',s:'A colleague asks: “Please add an Export to Excel button on the report page.”',q:'What do they most likely really want?',o:['An export button','To get the data out to do a calculation or a report','A prettier report page'],a:1,
+    big:'People don’t want a drill. They want the hole in the wall.',exp:'A request is often the user’s own idea of a solution. Ask “what do you do after exporting?” and you may find they compute the same summary in Excel every time. Showing that summary in the system beats a button.',t:['User goal','What the user is really trying to get done. Shipping the request is delivery; helping them reach the goal is value.'],ap:'Before any requirement, ask three questions: who uses it, what are they trying to get done, where are they stuck today?'},
+   {ic:'pin',s:'You’re driving with a navigation app. Three times in a row it says “Route calculation failed. Please retry.”',q:'What do you most likely do the fourth time?',o:['Keep pressing retry','Switch apps or follow the road signs','Call the app company to complain'],a:1,
+    big:'Every error spends a little trust.',exp:'Most people don’t complain; they work around it or leave. The more errors, the less users trust the system, and the more they “do it themselves”.',t:['Error rate','Tasks with an error ÷ tasks started. It tells us at which step, and by which error, users get blocked.'],ap:'In APEX, “doing it themselves” often means going back to manual Excel, which raises the risk on Treasury numbers.'},
+   {ic:'people',s:'100 users hit the same problem in the system.',q:'How many do you think will tell us about it?',o:['Most of them','About half','Only a handful'],a:2,
+    big:'Silence doesn’t mean there’s no problem.',exp:'Most people quietly put up with it, work around it, or stop using it. Feedback channels only show the tip of the iceberg.',t:['Silent signals','Retries, detours, pauses, exits. Unspoken behaviour is users giving us feedback.'],ap:'APEX Data Insight finds these silent signals without interrupting anyone.'},
+   {ic:'clock',s:'You do one task 20 times a day. Clumsy design adds 30 seconds each time.',q:'Roughly how much extra time is that in a year?',o:['About 4 hours','About 40 hours','About 400 hours'],a:1,
+    big:'30 seconds becomes a week a year.',exp:'20 × 30 seconds = 10 minutes a day; over about 250 working days that’s 40+ hours, a full working week for one person.',t:['Efficiency','Time to complete a task (we use the median). Every second saved is multiplied by users and repetitions.'],ap:'If 50 APEX users are in the same spot, that’s about 2,000 hours a year.'},
+   {ic:'gym',s:'A gym signs up 100 new members in January. By March, only 20 still come.',q:'What should the owner do first?',o:['Hand out more flyers for 100 new members','Find out whether people just gave up, or the gym itself is the problem','Cut the price'],a:1,
+    big:'Retention is an alarm, not a diagnosis.',exp:'Maybe people really did run out of willpower. Or maybe the machines keep breaking and the peak-hour queues are long. Retention only says “people didn’t stay”; the reason is one level down: did the people who left keep hitting the same problem before they left?',t:['Retention rate','People active last month who are still active this month ÷ people active last month. It answers: do users want to come back?'],ap:'APEX is a work tool: users rarely “give up”, they work around it in Excel. When retention drops we check success and error rates. If the people who left all hit the same error at the same step, that’s ours to fix.'},
+   {ic:'chat',s:'The dashboard shows many people leave at step 3 of a flow.',q:'Do you now know why they leave?',o:['Yes, the data says it all','I know where, but I still need to ask users why','No need to know why, just change it'],a:1,
+    big:'Data tells you where. Users tell you why.',exp:'Behaviour data is great at “where” and “how many”; “why” needs surveys and interviews. Use both, or you may fix the wrong thing.',t:['Data + interviews','Find the problem with data, understand it with interviews, then prove the fix with data.'],ap:'In Q4 we combine tracking, an NPS survey and user interviews on our core use cases.'}]},
+ l1:{k:'LEVEL 2 · Gut vs data',lock:'Lock in my guess',you:'Your guess',real:'Real data',saw:'What the data told us',did:'What we did',src:'Real data: APEX audit log (NII-related), 23 May to 23 Jun 2026',
+  qs:[
+   {q:'In one month, how many visits landed on the “access guide” page?',h:'Very few of these visitors ever told us.',min:0,max:500,step:1,a:304,u:'visits',saw:'304 visits: lots of people stuck on “how do I get access, who can help?”, and hardly anyone told us.',did:'Combined Contact us with Help & Support, listed top questions by use case, and put it on the login page.'},
+   {q:'Of 34 access requests, how many actually reached “submit”?',h:'The rest gave up half way.',min:0,max:34,step:1,a:16,u:'requests',saw:'Fewer than half. Most users got lost in the request flow, without leaving any feedback.',did:'A clear request path and contacts inside Help & Support.'},
+   {q:'How many times did users open APEX and jump straight back to the Home page?',h:'Many left before they even started.',min:0,max:400,step:1,a:187,u:'times',saw:'Users without access left immediately, because the login page showed them nothing.',did:'Merged About APEX into the login page, so everyone sees what APEX does from the first second.'}]},
+ l2:{k:'LEVEL 2 · Find the friction',h:'Watch the replay. <em>Where did they get stuck?</em>',sub:'A sample user journey on a made-up page. You only see the cursor, just as we usually only see “users came, then left”. Watch, then click the step where you think they got stuck.',app:'Sample page · Reports',home:'← Home',
+  steps:['Pick dataset','Set filters','Update chart','Export'],play:'Play replay',replay:'Watch again',ask:'Where did they get stuck? Click it',err:'Chart update failed. Please retry',gone:'The user left',gone2:'No feedback, no ticket, not a word.',
+  logH:'Behaviour log',lockH:'Behaviour log · locked',lockP:'This is what we see without data: a few clicks, then the user leaves. Make your guess from what you saw.',log:['Open the reports page','Pick dataset ✓','Set filters ✓','Click “Update chart” → error E-204','Go back and change filters','“Update chart” again → error E-204','Third click → error E-204','Stops at “Export”: empty chart, nothing to export','Back to Home, left'],
+  right:'Yes, “Update chart”.',wrong:'It was step 3, “Update chart”.',wrongP:'From the outside they also seemed to hesitate on filters and export. Only the behaviour log tells you the real reason.',fun:'Error rate per step (illustrative)',funV:[4,6,31,5],
+  saw:'No complaint, but the same user clicked three times and left. That’s a silent signal.',did:'That’s why we track success and error rates in Q4: data finds the friction, and we fix it first.',il:'Journey and error rates illustrative, adapted from patterns in the logs'},
+ l3:{k:'LEVEL 3 · Data detective',pot:'Case reward',cost:'Flip −15',clueH:'Clues',optH:'Your call?',gutTag:'Gut call',real:'Real data',ill:'Illustrative',flip:'Tap to flip',
+  ok:'Case closed!',bad:'Not quite.',did:'What we actually did',
+  cases:[
+   {t:'Case 1 / 3 · Where did help go?',b:'New users have a rough first month, but hardly anyone says so. What’s going on?',
+    clues:[['Retention','Few new users come back the next month','ill'],['Success rate','Only 16 of 34 access requests reached submit','real'],['Error rate','“No permission” errors cluster on first entry','ill'],['Behaviour','304 visits to the access guide; 36 NII journeys detoured there','real']],
+    opts:['Send everyone a training email','Combine Contact us and Help & Support, list top questions by use case, add it to the login page','Add two more pages of text to the access guide'],a:1,
+    why:['Emails get forgotten; nobody helps at the moment users get stuck.','Right. Users need the answer at the moment they’re stuck, organised by the use case in their hands.','Users already visited the guide 304 times. It’s not missing text; they can’t find the right answer or person.'],
+    did:'That’s Enhancement 1: Help & Support combined, top questions by use case, an entry on the login page.'},
+   {t:'Case 2 / 3 · In and out',b:'Many people open APEX and leave within seconds. There are no errors at all.',
+    clues:[['Retention','First-time visitors who don’t log in rarely return','ill'],['Success rate','Users without access can’t start any task','ill'],['Error rate','No visible errors (silent churn)','ill'],['Behaviour','187 jumps from APEX straight back to Home','real']],
+    opts:['Merge About APEX into the login page so people without access understand APEX','Add stricter input validation to the login page','Send everyone an onboarding deck'],a:0,
+    why:['Right. Retention starts before login: everyone should see what APEX is and how to get access in the first second.','No errors, so validation isn’t the problem.','A deck isn’t there at the moment the user leaves.'],
+    did:'That’s Enhancement 2: About APEX on the login page, linked to request access and Help & Support.'},
+   {t:'Case 3 / 3 · Most used, hardest to use?',b:'A heavily used feature that people aren’t happy with. (Illustrative case)',
+    clues:[['Retention','Stable; people can’t do without it','ill'],['Success rate','Only 58% of chart tasks succeed','ill'],['Error rate','Step 3 “Update chart” fails 31% of the time','ill'],['Behaviour','Same user clicks “Update” three times, then leaves','ill']],
+    opts:['Redesign the colours and icons of the whole page','Add five new chart types','Fix the chart-update error, make export asynchronous, and track success rate'],a:2,
+    why:['Prettier won’t stop the errors.','More features, same errors.','Right. The data points precisely to step 3: fix it, then prove it with the success rate.'],
+    did:'That’s the idea behind Enhancement 3: success and error rate on core use cases became our Q4 KPI.'}]},
+ l4:{k:'LEVEL 4 · Prioritise',h:'You have <em>two sprints</em>. Which two first?',p1:'First, pick two by who shouted loudest.',p2:'Now open the data. Change your mind?',sel:'Selected',lock1:'Lock it in',open:'Open the data',lock2:'Final answer',voiceL:'Raised in meetings',times:'×',use:'Usage',fric:'Friction',best:'Data pick',
+  res:'The quiet requests often matter most',resP:'The loudest request isn’t always the one that affects the most people. Nobody raised “Help centre” in a meeting, yet 304 visits a month were looking for it.',
+  reqs:[['Dark mode',5,15,5,'Few tasks affected, no related errors'],['Fix the chart-update error in a high-use feature',1,95,85,'Heavy usage, 31% error rate at step 3'],['Welcome animation on the home page',3,20,0,'No related behaviour signal'],['Help centre: top questions by use case',0,70,75,'304 access-guide visits, 16/34 requests completed'],['Add PDF to export formats',4,25,10,'Export is lightly used'],['Simplify NII setup steps',2,60,45,'Core journey, some runs rejected']],bestIdx:[1,3],
+  il:'Requests and metrics illustrative; the help-centre signal comes from real data'},
+ end:{k:'Challenge complete',h:'Your user insight score',of:'out of 800',parts:['UX basics','Find the friction','Data detective','Prioritise'],
+  ranks:[[80,'User behaviour detective','You already look at the data before you decide.'],[55,'Rising insight hunter','Good instincts; data makes you sharper.'],[0,'Gut feeler','Instinct is valuable, but user behaviour will surprise you.']],
+  gut:'Cases solved on gut alone',gutN:'',tipH:'One small action for you',tips:['Before your next design, check the success and error rate of that journey.','Attach one piece of behaviour data to your next requirement.','Tracking gives users a microphone: five standard events are enough.','Every click you make quietly helps us improve APEX.'],
+  lesH:'Three things this game is trying to say',les:[['01','Users won’t tell you','304 visits, 187 exits, yet hardly anyone said a word. Behaviour is the feedback users never put into words.'],['02','Data tells you where','Not a full redesign, just step 3, “Update chart”. Precision saves time.'],['03','Loudest ≠ most important','Prioritise with data, and spend sprints where they help the most people.']],
+  whyH:'Put user behaviour <br><em>into everyday thinking</em>',whyS:'When we discuss a requirement, review a design or get ready to launch, look at users through these lenses:',why:[['Do they come back?','Retention: are last month’s users still here this month?'],['Did they get it done?','Success rate: of the tasks started, how many were completed?'],['Where do they get stuck?','Errors and paths: which step fails, gets retried, detoured or abandoned?'],['How long did it take?','Efficiency: how long does a task take, and is every step needed?'],['Why?','User voice: data shows where; surveys and interviews show why.']],
+  core:{h:'Why we study user behaviour',q:'Every requirement, every design, every release ends up in front of a real user.',it:[['Requirement','Is it solving a real problem?'],['Design','Does it make the work smoother?'],['Release','Did it actually help someone?']],u:'User',p:'Make these questions a habit in every meeting, review and launch.'},
+  mem:{tag:'Now recruiting',h:'APEX Data Insight membership',joke:'Want to know what users of your use case are thinking, before everyone else does? Join the club.',perks:['First look at user insights for your use case','Requirements and designs backed by real behaviour data','See the impact of every change, before and after, in numbers'],fee:'Membership fee: zero. Only requirement: be willing to hear what users are saying.',join:'Sign me up',joined:'Welcome aboard! Ask the APEX UX team for your first user insight.',no:'Member no.',you:'Future you'},
+  again:'Play again',cta:'Curious how users really use the part of APEX you own? Let’s look at the data together; start by talking to the APEX UX team.',src:'Real data covers only 304, 16/34, 36 and 187, from the APEX audit log (NII-related, 23 May to 23 Jun 2026). Everything else is illustrative, adapted from patterns in the logs.'}
+}};
+/* ---------- state ---------- */
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let lang=store.get('adi_lang')||'cn';
+{const th=store.get('adi_theme'); if(th) document.documentElement.dataset.theme=th;}
+let S;
+function reset(){S={l1d:[],scr:'intro',role:0,i:0,score:0,parts:[0,0,0,0,0],gut:0,l2:{phase:'watch',tries:0},l3:{open:[],done:false},l4:{phase:1,pick:[],first:[]}}}
+reset();
+const app=document.getElementById('app');
+const t=()=>T[lang];
+const ICON=['<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>','<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>','<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>','<svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h9M5 18h5"/></svg>'];
+/* ---------- chrome ---------- */
+function chrome(){
+ document.documentElement.lang=lang==='cn'?'zh-CN':'en';
+ document.title=lang==='cn'?'APEX Data Insight · 你真的了解用户吗？':'APEX Data Insight · Do you really know our users?';
+ document.getElementById('lang').textContent=t().lang;
+ document.getElementById('theme').textContent=document.documentElement.dataset.theme==='dark'?t().theme[0]:t().theme[1];
+ const lvl={intro:-1,l0:0,l2:1,l3:2,l4:3,end:4}[S.scr];
+ document.getElementById('map').innerHTML=[0,1,2,3].map(i=>`<span class="${i<lvl?'done':i===lvl?'cur':''}"></span>`).join('');
+ document.getElementById('sc').textContent=S.score;
+}
+function add(p){
+ if(!p) return; const from=S.score; S.score+=p; const el=document.getElementById('sc'), box=document.getElementById('score'), t0=performance.now();
+ const tick=tt=>{const k=Math.min(1,(tt-t0)/900); el.textContent=Math.round(from+p*(1-Math.pow(1-k,3))); if(k<1) requestAnimationFrame(tick)}; requestAnimationFrame(tick);
+ box.classList.remove('bump'); void box.offsetWidth; box.classList.add('bump');
+}
+function mood(m){document.body.dataset.mood=m}
+function go(scr){S.scr=scr; render(); window.scrollTo({top:0,behavior:'smooth'})}
+/* ---------- confetti ---------- */
+const fx=document.getElementById('fx'), cx=fx.getContext('2d'); let parts=[];
+function size(){fx.width=innerWidth*devicePixelRatio;fx.height=innerHeight*devicePixelRatio}
+addEventListener('resize',size); size();
+function burst(x,y,n=90){
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+ const cs=getComputedStyle(document.documentElement), col=[cs.getPropertyValue('--a1'),cs.getPropertyValue('--a2'),cs.getPropertyValue('--good'),cs.getPropertyValue('--warn')];
+ for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2, v=4+Math.random()*8; parts.push({x:x*devicePixelRatio,y:y*devicePixelRatio,vx:Math.cos(a)*v,vy:Math.sin(a)*v-6,r:3+Math.random()*4,c:col[i%4].trim(),l:1,rot:Math.random()*6})}
+ if(parts.length===n) requestAnimationFrame(step);
+}
+function step(){
+ cx.clearRect(0,0,fx.width,fx.height);
+ parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.35;p.vx*=.98;p.l-=.012;p.rot+=.1;cx.save();cx.globalAlpha=Math.max(0,p.l);cx.translate(p.x,p.y);cx.rotate(p.rot);cx.fillStyle=p.c;cx.fillRect(-p.r,-p.r/2,p.r*2,p.r);cx.restore()});
+ parts=parts.filter(p=>p.l>0&&p.y<fx.height+40);
+ if(parts.length) requestAnimationFrame(step); else cx.clearRect(0,0,fx.width,fx.height);
+}
+const at=el=>{const r=el.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]};
+/* ---------- screens ---------- */
+function render(){chrome(); ({intro,l0,l2,l3,l4,end})[S.scr](); }
+function intro(){
+ mood('data'); const x=t().intro;
+ app.innerHTML=`<section class="scr st"><div class="kick">${x.k}</div><h1>${x.h}</h1><p class="lead">${x.lead}</p>
+ <div class="levels">${x.lv.map((l,i)=>`<div class="card lv"><div class="ic">${ICON[i]}</div><b>${l[0]}</b><h3>${l[1]}</h3><p>${l[2]}</p></div>`).join('')}</div>
+ <div><p class="sub" style="margin:0 0 10px">${x.role}</p><div class="roles">${x.roles.map((r,i)=>`<button class="role" data-r="${i}" aria-pressed="${i===S.role}">${r}</button>`).join('')}</div>
+ <button class="btn" id="start">${x.start} <span class="ar">→</span></button></div></section>`;
+ app.querySelectorAll('.role').forEach(b=>b.onclick=()=>{S.role=+b.dataset.r;app.querySelectorAll('.role').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+ document.getElementById('start').onclick=()=>{S.i=0;go('l0')};
+}
+
+const SCN={dish:'<path d="M4 15h16M6 15a6 6 0 0 1 12 0M12 7V5M3 18h18"/>',box:'<path d="M3 8l9-4 9 4v8l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v8"/>',drill:'<path d="M3 9h11v5H3zM14 10h4l3 1.5-3 1.5h-4M6 14l-1 6h4l1-6"/>',pin:'<path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',people:'<circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c.5-4 3-6 6-6s5.5 2 6 6M14 20c.3-2.8 1.8-4.5 3.5-4.5S21 17 21.5 20"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',gym:'<path d="M3 10v4M6 7v10M18 7v10M21 10v4M6 12h12"/>',chat:'<path d="M4 5h16v10H9l-5 4z"/><path d="M8 9h8M8 12h5"/>'};
+function l0(){
+ mood('gut'); const x=t().l0, q=x.qs[S.i]; S.l0d=S.l0d||[];
+ app.innerHTML=`<section class="scr st"><div class="kick">${x.k} · ${S.i+1}/${x.qs.length}</div>
+ <div class="card scene"><div class="sic"><svg viewBox="0 0 24 24">${SCN[q.ic]}</svg></div><p>${q.s}</p></div>
+ <h2 style="margin-top:22px">${q.q}</h2>
+ <div class="qopts" id="qo">${q.o.map((o,i)=>`<button class="qopt" data-o="${i}"><i>${'ABC'[i]}</i><span>${o}</span></button>`).join('')}</div><div id="aha"></div></section>`;
+ app.querySelectorAll('.qopt').forEach(b=>b.onclick=()=>{
+  const box=document.getElementById('qo'); if(box.classList.contains('done')) return; box.classList.add('done');
+  const i=+b.dataset.o, ok=i===q.a, first=!S.l0d[S.i]; S.l0d[S.i]=1; box.children[q.a].classList.add('right'); if(!ok) b.classList.add('wrong','shake');
+  const p=ok?25:0; if(first&&p){add(p);S.parts[0]+=p;burst(...at(b),50)} mood(ok?'win':'data');
+  document.getElementById('aha').innerHTML=`<div class="card ahac"><div class="ahah"><span class="tag2">${x.aha}</span>${ok?`<span class="pts" style="animation-delay:0s;font-size:15px">+${p} ${t().pts}</span>`:''}</div>
+   <h2 class="big">${q.big}</h2><p class="sub" style="font-size:16px">${q.exp}</p>
+   <div class="ahag"><div class="termc"><b>${x.term}</b><h3>${q.t[0]}</h3><p>${q.t[1]}</p></div><div class="apexc"><b>${x.apex}</b><p>${q.ap}</p></div></div></div>
+   <div class="row" style="margin-top:16px"><button class="btn" id="nx">${S.i<x.qs.length-1?t().next:t().go} <span class="ar">→</span></button></div>`;
+  document.getElementById('aha').scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('nx').onclick=()=>{if(S.i<x.qs.length-1){S.i++;l0();chrome();window.scrollTo({top:0,behavior:'smooth'})} else {S.i=0;S.l2={phase:'watch',tries:0};go('l2')}};
+ });
+}
+function count(el,n,D=1200,delay=0){setTimeout(()=>{const t0=performance.now();const tick=tt=>{const k=Math.min(1,(tt-t0)/D);el.textContent=Math.round(n*(1-Math.pow(2,-10*k)));if(k<1)requestAnimationFrame(tick);else el.textContent=n};requestAnimationFrame(tick)},delay)}
+const CUR='<svg viewBox="0 0 24 24"><path d="M4 2l16 9-7 2-3 7z" fill="#fff" stroke="#0B0C12" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+function l2(){
+ mood('data'); const x=t().l2;
+ app.innerHTML=`<section class="scr st"><div class="kick">${x.k}</div><h2>${x.h}</h2><p class="sub">${x.sub}</p>
+ <div class="l2"><div class="card wf" id="wf"><div class="wf-top"><span class="dots"><i></i><i></i><i></i></span>${x.app}<button class="home" id="home" tabindex="-1">${x.home}</button></div>
+  <div class="wf-body"><div class="wfs-row" id="steps">${x.steps.map((s,i)=>`<button class="wfs" data-s="${i}" disabled><b>0${i+1}</b><span>${s}</span></button>`).join('')}</div>
+  <div class="wf-chart" id="chart">${[40,65,52,80,58,72,45].map(h=>`<i style="--h:${h}%"></i>`).join('')}</div></div>
+  <div class="toast" id="toast">${x.err}</div><div class="cursor" id="cur">${CUR}<span class="rip"></span></div>
+  <div class="gone" id="gone"><div><b>${x.gone}</b><span>${x.gone2}</span></div></div></div>
+ <div class="card side"><h3 id="logh">${x.lockH}</h3><ul class="log" id="log"><li style="color:var(--ink3);font-family:var(--text);font-size:14px;line-height:1.5">${x.lockP}</li></ul><div class="row"><button class="btn" id="play">${x.play} <span class="ar">▶</span></button></div><div id="l2r"></div></div></div>
+ <div class="note">${x.il}</div></section>`;
+ document.getElementById('play').onclick=replay;
+}
+function replay(){
+ const x=t().l2, wf=document.getElementById('wf'), cur=document.getElementById('cur'), gone=document.getElementById('gone'), btn=document.getElementById('play');
+ const st=[...wf.querySelectorAll('.wfs')], home=document.getElementById('home'); btn.disabled=true; gone.classList.remove('on'); wf.classList.remove('asking'); st.forEach(s=>s.disabled=true);
+ const pos=el=>{const a=wf.getBoundingClientRect(),b=el.getBoundingClientRect();return [b.left-a.left+b.width*.55,b.top-a.top+b.height*.6]};
+ const move=el=>{const [l,tp]=pos(el);cur.style.left=l+'px';cur.style.top=tp+'px'};
+ const click=i=>{cur.classList.remove('click');void cur.offsetWidth;cur.classList.add('click'); if(i!=null){st[i].classList.add('press');setTimeout(()=>st[i].classList.remove('press'),220)}};
+ const seq=[[500,()=>move(st[0])],[800,()=>click(0)],[600,()=>move(st[1])],[800,()=>click(1)],[600,()=>move(st[2])],[800,()=>click(2)],[1100,()=>move(st[1])],[800,()=>click(1)],[700,()=>move(st[2])],[800,()=>click(2)],[600,()=>click(2)],[900,()=>move(st[3])],[1600,()=>move(home)],[800,()=>click()],[400,()=>gone.classList.add('on')],[1600,()=>{gone.classList.remove('on');ask()}]];
+ let tt=0; seq.forEach(([d,f])=>{tt+=d;setTimeout(f,tt)});
+}
+function ask(){
+ const x=t().l2, wf=document.getElementById('wf'), btn=document.getElementById('play'), r=document.getElementById('l2r');
+ btn.disabled=false; btn.innerHTML=`${x.replay} <span class="ar">↺</span>`; btn.classList.add('ghost');
+ if(S.l2.phase==='done') return;
+ S.l2.phase='ask'; r.innerHTML=`<p class="sub" style="margin:0;color:var(--a1);font-weight:600">${x.ask}</p>`;
+ wf.classList.add('asking');
+ wf.querySelectorAll('.wfs').forEach(s=>{s.disabled=false;s.onclick=()=>{
+  if(S.l2.phase!=='ask') return; S.l2.phase='done'; const ok=+s.dataset.s===2, p=ok?100:30;
+  wf.classList.remove('asking'); wf.querySelectorAll('.wfs').forEach(z=>z.disabled=true);
+  if(!ok){s.classList.add('shake');setTimeout(()=>s.classList.remove('shake'),500)}
+  /* open the log: the data reveals the truth */
+  const log=document.getElementById('log'); document.getElementById('logh').textContent=x.logH; log.innerHTML='';
+  x.log.forEach((l,i)=>setTimeout(()=>{const li=document.createElement('li');li.className=/E-204/.test(l)?'e':i===8?'x':'';li.innerHTML=`<i>${String(i).padStart(2,'0')}</i>${l}`;log.appendChild(li)},i*170));
+  setTimeout(()=>{const st=wf.querySelectorAll('.wfs'); st[0].classList.add('ok');st[1].classList.add('ok');st[2].classList.add('err');document.getElementById('chart').classList.add('broken');const to=document.getElementById('toast');to.classList.add('on');setTimeout(()=>to.classList.remove('on'),1800)},x.log.length*170);
+  S.parts[2]=p; setTimeout(()=>{add(p); if(ok){burst(...at(s));mood('win')}},x.log.length*170);
+  r.innerHTML=`<div class="verdict ${ok?'g':'b'}" style="animation-delay:${x.log.length*.17}s"><h3>${ok?x.right:x.wrong} <span class="pts ${ok?'':'lo'}" style="font-size:15px;animation-delay:${x.log.length*.17}s">+${p} ${t().pts}</span></h3>${ok?'':`<p>${x.wrongP}</p>`}
+   <div class="funnel"><p class="sub" style="margin:0 0 4px;font-size:12px">${x.fun}</p>${x.steps.map((n,i)=>`<div class="fr ${i===2?'hot':''}"><span>${n}</span><div class="tr"><i data-w="${x.funV[i]/35*100}"></i></div><b>${x.funV[i]}%</b></div>`).join('')}</div>
+   <p>${x.saw}</p><p class="did">${x.did}</p></div><div class="row" style="margin-top:14px"><button class="btn" id="nx">${t().go} <span class="ar">→</span></button></div>`;
+  setTimeout(()=>r.querySelectorAll('.fr i').forEach(i=>i.style.width=i.dataset.w+'%'),x.log.length*170+200);
+  document.getElementById('nx').onclick=()=>{S.i=0;S.l3={open:[],done:false};go('l3')};
+ }});
+}
+function l3(){
+ const x=t().l3, c=x.cases[S.i], o=S.l3.open; mood(o.length?'data':'gut');
+ const pot=100-o.length*15;
+ app.innerHTML=`<section class="scr st"><div class="kick">${x.k}</div><h2>${c.t}</h2><p class="sub">${c.b}</p>
+ <div class="case"><div class="card brief"><div class="pot"><b id="pot">${pot}</b><span>${x.pot}</span></div><h3>${x.clueH}</h3>
+  <div class="clues">${c.clues.map((k,i)=>`<button class="clue ${o.includes(i)?'open':''}" data-c="${i}" aria-label="${k[0]}"><div class="in"><div class="f"><span>0${i+1}</span><b>${k[0]}</b><span class="cost">${x.cost}</span></div><div class="b"><b>${k[0]}</b><p>${k[1]}</p><span class="tg ${k[2]==='real'?'real':''}">${k[2]==='real'?x.real:x.ill}</span></div></div></button>`).join('')}</div></div>
+ <div class="card brief"><h3>${x.optH}</h3><div class="opts" id="opts">${c.opts.map((p,i)=>`<button class="opt" data-o="${i}"><i>${'ABC'[i]}</i><span>${p}</span></button>`).join('')}</div><div id="vd"></div></div></div></section>`;
+ app.querySelectorAll('.clue').forEach(b=>b.onclick=()=>{const i=+b.dataset.c; if(S.l3.done||o.includes(i)) return; o.push(i); b.classList.add('open'); mood('data'); const pe=document.getElementById('pot'); pe.textContent=100-o.length*15});
+ app.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+  if(S.l3.done) return; S.l3.done=true; const i=+b.dataset.o, ok=i===c.a, p=ok?Math.max(40,100-o.length*15):0;
+  const box=document.getElementById('opts'); box.classList.add('done'); box.children[c.a].classList.add('right'); if(!ok) b.classList.add('wrong','shake');
+  if(ok&&o.length===0) S.gut++;
+  if(ok){add(p);S.parts[3]+=p;burst(...at(b));mood('win')} else mood('gut');
+  document.getElementById('vd').innerHTML=`<div class="verdict ${ok?'g':'b'}" style="margin-top:14px"><h3>${ok?x.ok:x.bad} ${ok?`<span class="pts" style="font-size:15px;animation-delay:0s">+${p} ${t().pts}</span>`:''} ${ok&&o.length===0?`<span class="tag" style="font:600 11px var(--mono);color:var(--warn)">${x.gutTag}</span>`:''}</h3><p>${c.why[i]}</p>${ok?'':`<p>${c.why[c.a]}</p>`}<p class="did">${c.did}</p></div><div class="row" style="margin-top:14px"><button class="btn" id="nx">${S.i<2?t().next:t().go} <span class="ar">→</span></button></div>`;
+  document.getElementById('nx').onclick=()=>{S.l3={open:[],done:false}; if(S.i<2){S.i++;l3();chrome();window.scrollTo({top:0,behavior:'smooth'})} else {S.l4={phase:1,pick:[],first:[]};go('l4')}};
+ });
+}
+function l4(){
+ const x=t().l4, L=S.l4; mood(L.phase===1?'gut':'data');
+ const vb=n=>`<span class="vb">${[1,2,3,4,5].map(k=>`<i class="${k<=n?'on':''}" style="height:${4+k*2}px"></i>`).join('')}</span>`;
+ app.innerHTML=`<section class="scr st"><div class="kick">${x.k}</div><h2>${x.h}</h2><p class="sub">${L.phase===1?x.p1:L.phase===2?x.p2:''}</p>
+ <div class="req" id="req">${x.reqs.map((r,i)=>`<button class="rq ${L.phase===3&&x.bestIdx.includes(i)?'best':''}" data-q="${i}" aria-pressed="${L.pick.includes(i)}"><h3>${r[0]}</h3><div class="voice">${vb(r[1])}${x.voiceL} ${r[1]} ${x.times}</div>${L.phase>=2?`<div class="dat"><div class="meter u"><span>${x.use}</span><div class="tr"><i data-w="${r[2]}"></i></div></div><div class="meter f"><span>${x.fric}</span><div class="tr"><i data-w="${r[3]}"></i></div></div><span>${r[4]}</span>${L.phase===3&&x.bestIdx.includes(i)?`<span class="badge">${x.best}</span>`:''}</div>`:''}</button>`).join('')}</div>
+ <div class="phase" id="ph"></div><div id="l4r"></div><div class="note">${x.il}</div></section>`;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>app.querySelectorAll('.meter i').forEach(i=>i.style.width=i.dataset.w+'%')));
+ const ph=document.getElementById('ph');
+ const bar=()=>{ if(L.phase===3) return; ph.innerHTML=`<span class="sel">${x.sel} ${L.pick.length}/2</span><button class="btn" id="lk" ${L.pick.length===2?'':'disabled'}>${L.phase===1?x.lock1:x.lock2} <span class="ar">→</span></button>`;
+  document.getElementById('lk').onclick=()=>{ if(L.phase===1){L.first=[...L.pick];L.phase=2;l4()} else finish4()}};
+ bar();
+ if(L.phase<3) app.querySelectorAll('.rq').forEach(b=>b.onclick=()=>{const i=+b.dataset.q, k=L.pick.indexOf(i);
+  if(k>=0) L.pick.splice(k,1); else {if(L.pick.length>=2) L.pick.shift(); L.pick.push(i)}
+  app.querySelectorAll('.rq').forEach(z=>z.setAttribute('aria-pressed',L.pick.includes(+z.dataset.q))); bar()});
+ if(L.phase===3) result4();
+}
+function finish4(){
+ const x=t().l4, L=S.l4; const hit=L.pick.filter(i=>x.bestIdx.includes(i)).length; const p=hit*100; S.parts[4]=p; L.phase=3; L.p=p; l4(); add(p);
+ if(p===200) setTimeout(()=>burst(innerWidth/2,innerHeight/2,120),300);
+}
+function result4(){
+ const x=t().l4, L=S.l4; const f=L.first.filter(i=>x.bestIdx.includes(i)).length;
+ document.getElementById('l4r').innerHTML=`<div class="verdict ${L.p>=100?'g':'b'}" style="margin-top:18px"><h3>${x.res} <span class="pts ${L.p?'':'lo'}" style="font-size:15px;animation-delay:0s">+${L.p} ${t().pts}</span></h3><p>${x.resP}</p><p style="font:600 12px var(--mono);color:var(--ink3)">${lang==='cn'?`凭声音：命中 ${f}/2 · 看数据后：命中 ${L.p/100}/2`:`By voice: ${f}/2 · With data: ${L.p/100}/2`}</p></div><div class="row" style="margin-top:14px"><button class="btn" id="nx">${t().go} <span class="ar">→</span></button></div>`;
+ document.getElementById('nx').onclick=()=>go('end');
+}
+function end(){
+ mood('win'); const x=t().end, pct=Math.round(S.score/800*100), rk=x.ranks.find(r=>pct>=r[0]); const mx=[200,100,300,200], PI=[0,2,3,4];
+ app.innerHTML=`<section class="scr st"><div class="kick">${x.k}</div>
+ <div class="end"><div class="ring"><svg viewBox="0 0 240 240"><defs><linearGradient id="rg" x1="0" x2="1"><stop offset="0" stop-color="var(--a1)"/><stop offset="1" stop-color="var(--a2)"/></linearGradient></defs><circle class="bgc" cx="120" cy="120" r="110"/><circle class="fgc" id="fgc" cx="120" cy="120" r="110"/></svg><div class="c"><b id="fs">0</b><span>${x.of}</span></div></div>
+  <div><h2>${x.h}</h2><p class="rank" style="margin:14px 0 4px">${rk[1]}</p><p class="sub" style="margin:0">${rk[2]}</p>
+  <div class="parts">${x.parts.map((n,i)=>`<div class="part"><span>${n}</span><b>${S.parts[PI[i]]}<small> / ${mx[i]}</small></b></div>`).join('')}</div>
+  <p class="sub" style="font-size:13px">${x.gut}: ${S.gut} ${x.gutN}</p><div class="ins" style="margin-top:14px;animation-delay:.6s"><b>${x.tipH} · ${t().intro.roles[S.role]}</b><p>${x.tips[S.role]}</p></div></div></div>
+ <h3 style="margin-top:44px">${x.lesH}</h3><div class="lessons" style="margin-top:14px">${x.les.map(l=>`<div class="card les"><b>${l[0]}</b><h3>${l[1]}</h3><p>${l[2]}</p></div>`).join('')}</div>
+ <div class="card why"><div><h2>${x.whyH}</h2><p class="whys">${x.whyS}</p><ol style="margin-top:20px">${x.why.map((w,i)=>`<li><i>${i+1}</i><div><b>${w[0]}</b><span>${w[1]}</span></div></li>`).join('')}</ol></div>
+  <div class="core"><b class="coreh">${x.core.h}</b><p class="coreq">${x.core.q}</p><div class="cflow"><div class="cits">${x.core.it.map((c,i)=>`<div class="cit" style="--k:${i}"><b>${c[0]}</b><span>${c[1]}</span></div>`).join('')}</div><svg class="clines" viewBox="0 0 60 180" preserveAspectRatio="none" aria-hidden="true"><path d="M0 30 C30 30 30 90 60 90M0 90 H60M0 150 C30 150 30 90 60 90"/></svg><div class="cuser"><svg class="av" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="40" fill="var(--card)" stroke="var(--edge)" stroke-width="3.5"/><path d="M14 78c3-15 14-23 28-23s25 8 28 23" fill="var(--a1)" stroke="var(--edge)" stroke-width="3.5" stroke-linejoin="round"/><circle cx="42" cy="34" r="17" fill="var(--gold)" stroke="var(--edge)" stroke-width="3.5"/><circle cx="35.5" cy="33" r="2.4" fill="var(--edge)"/><circle cx="48.5" cy="33" r="2.4" fill="var(--edge)"/><circle cx="31" cy="39" r="3" fill="#FF8FA3" opacity=".7"/><circle cx="53" cy="39" r="3" fill="#FF8FA3" opacity=".7"/><path d="M37 40q5 4.5 10 0" fill="none" stroke="var(--edge)" stroke-width="2.6" stroke-linecap="round"/></svg><b>${x.core.u}</b></div></div><p class="corep">${x.core.p}</p></div></div>
+ <div class="card mem"><div class="vip" aria-hidden="true"><span class="vchip"></span><span class="vt">VIP · USER INSIGHT</span><b>APEX Data Insight</b><span class="vno">${x.mem.no} 0001</span><span class="vname">${x.mem.you}</span><i class="shine"></i></div><div class="mtxt"><span class="mtg">${x.mem.tag}</span><h3>${x.mem.h}</h3><p class="mjoke">${x.mem.joke}</p><ul class="perks">${x.mem.perks.map(k=>`<li>${k}</li>`).join('')}</ul><p class="fee">${x.mem.fee}</p><button class="btn" id="join">${x.mem.join} <span class="ar">★</span></button></div></div><div class="row" style="margin-top:22px;justify-content:flex-end"><button class="btn ghost" id="again">${x.again} <span class="ar">↺</span></button></div>
+ <div class="note">${x.src}</div></section>`;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{const f=document.getElementById('fgc'); if(f) f.style.strokeDashoffset=691*(1-S.score/800)}));
+ count(document.getElementById('fs'),S.score,1800,300);
+ if(pct>=55) setTimeout(()=>burst(innerWidth/2,innerHeight*.35,140),900);
+ document.getElementById('again').onclick=()=>{reset();go('intro')};
+ document.getElementById('join').onclick=e=>{const b=e.currentTarget; burst(...at(b),120); b.outerHTML=`<p class="joined">${x.mem.joined}</p>`; const v=document.querySelector('.vip'); if(v) v.classList.add('on')};
+}
+/* ---------- controls ---------- */
+document.getElementById('lang').onclick=()=>{lang=lang==='cn'?'en':'cn';store.set('adi_lang',lang);render()};
+document.getElementById('theme').onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==='dark'?'light':'dark';store.set('adi_theme',d.dataset.theme);chrome()};
+render();
+</script>
+</body>
+</html>
